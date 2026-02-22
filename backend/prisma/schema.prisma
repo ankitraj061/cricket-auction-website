@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+
+model Team {
+  id           Int      @id @default(autoincrement())
+  name         String
+  captainName  String
+  captainImage String?
+  currentPurse Int      @default(100000) // default purse
+  players      Player[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AuctionSettings {
+  id                Int      @id
+  seasonName        String   @default("Season 1")
+  initialPurse      Int      @default(100000)
+  minPlayersPerTeam Int      @default(0)
+  maxPlayersPerTeam Int      @default(11)
+  playerOrderByBasePrice String @default("DESC")
+  playerOrderByRole      String @default("NO_ORDER")
+  allowedBasePrices      Int[]  @default([2000, 3000, 5000])
+  isExchangeAllowed      Boolean @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Player {
+  id            Int      @id @default(autoincrement())
+  name          String
+  mobile        String?   @unique
+  role          Role
+  basePrice     Int
+  soldPrice     Int?
+  description   String?
+  stats         String?
+  playerImageUrl String?
+
+  team          Team?    @relation(fields: [teamId], references: [id])
+  teamId        Int?
+
+  isSold        Boolean  @default(false)
+  isUnsold      Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+enum Role {
+  BATSMAN
+  BOWLER
+  ALLROUNDER
+}
+
+enum basePrice {
+  TWO_THOUSAND
+  THREE_THOUSAND
+  FIVE_THOUSAND
+}
+
+model User{
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  role      UserRole @default(USER)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}

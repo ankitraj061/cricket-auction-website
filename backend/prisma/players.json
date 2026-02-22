@@ -1,0 +1,510 @@
+[
+  {
+    "playerName": "Aditya Gupta",
+    "mobileNumber": "9151681050",
+    "initialBid": 5000,
+    "stats": "Inning : 8, Runs : 30, Strike Rate : 120, Wickets : 11, Economy : 7.23",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/adityaG.jpg",
+    "role": "Bowler",
+    "description": "A medium–fast wicket-taking bowler known for consistent breakthroughs. An occasional hitter who can also bat in the middle order, rotating strike and keeping the innings steady."
+  },
+  {
+    "playerName": "Akshat Singh",
+    "mobileNumber": "7067561318",
+    "initialBid": 3000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/s0kb1s3cx3/PWIOI/Avatar.png?updatedAt=1749838221202",
+    "role": "Batsman",
+    "description": "Right handed batsman can help captain for planning and execution of the game"
+  },
+  {
+    "playerName": "Alok",
+    "mobileNumber": "8603112279",
+    "initialBid": 3000,
+    "stats": "Inning : 8, Runs : 92, Strike Rate : 121, Wickets : 0, Economy : 0",
+    "imageUrl": "https://ik.imagekit.io/tvz1mupab/alok.jpeg",
+    "role": "Batsman",
+    "description": "A right handed opener batsman who can score runs whenever the team needs them. Can take on any skillful batman known for his final match performance in last yello tournament."
+  },
+  {
+    "playerName": "Alok Gupta",
+    "mobileNumber": "7752953990",
+    "initialBid": 3000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/Alok.jpg",
+    "role": "Bowler",
+    "description": "A wizard spinner capable of trapping even the strongest batsmen with clever variations. Also contributes valuable runs in the middle order, making him a dependable all-round asset."
+  },
+  {
+    "playerName": "Ankur",
+    "mobileNumber": "7302216899",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/ankur.jpg",
+    "role": "Batsman",
+    "description": "NA"
+  },
+  {
+    "playerName": "Anmol Vishisht",
+    "mobileNumber": "7018034014",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/anmol.jpg",
+    "role": "Batsman",
+    "description": null
+  },
+  {
+    "playerName": "Ansh Raj Shukla",
+    "mobileNumber": "9457860350",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/ansh.jpg",
+    "role": "Batsman",
+    "description": "Right handed batsman"
+  },
+  {
+    "playerName": "Anshu Kumar",
+    "mobileNumber": "8595508751",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/anshu.webp",
+    "role": "Batsman",
+    "description": "NA"
+  },
+  {
+    "playerName": "Awadh",
+    "mobileNumber": "7985000241",
+    "initialBid": 2000,
+    "stats": "Inning : 12, Runs : 101, Strike Rate : 120, Wickets : 2, Economy : 9.29",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/AwadhSingh.jpg",
+    "role": "Allrounder",
+    "description": "A very aggressive on-field performer who can open or anchor the middle order with equal confidence. Handy with the ball too, providing reliable relief overs whenever the captain needs them."
+  },
+  {
+    "playerName": "C Shashank",
+    "mobileNumber": "8073614814",
+    "initialBid": 2000,
+    "stats": "Inning : 14, Runs : 62, Strike Rate : 172, Wickets : 7, Economy : 10.2",
+    "imageUrl": "https://ik.imagekit.io/s0kb1s3cx3/PWIOI/Avatar.png?updatedAt=1749838221202",
+    "role": "Allrounder",
+    "description": "A versatile bowler who can deliver both fast-paced spells and crafty spin with equal control. Adds value with the bat too, contributing handy runs whenever required."
+  },
+  {
+    "playerName": "Devansh",
+    "mobileNumber": "8446116613",
+    "initialBid": 5000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/devansh.jpeg",
+    "role": "Batsman",
+    "description": "A destructive opening batsman who can take on any fast bowler from ball one. Believes only in aggressive cricket, setting the tone with fearless stroke play."
+  },
+  {
+    "playerName": "Dhrumil selarka",
+    "mobileNumber": "9746216777",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/tvz1mupab/durmil.jpeg",
+    "role": "Batsman",
+    "description": "A medium pace bowler who can bowl sensibly and consistently with good control."
+  },
+  {
+    "playerName": "Hanan",
+    "mobileNumber": "9596742330",
+    "initialBid": 5000,
+    "stats": "Inning : 17, Runs : 218, Strike Rate : 101, Wickets : 14, Economy : 6.7",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/Hanan.png",
+    "role": "Allrounder",
+    "description": "A complete all-rounder who supports the captain with smart on-field strategy, able to bowl both fast and spin with control. Can open the innings, rotate strike, and hit big when needed — truly a complete cricketer."
+  },
+  {
+    "playerName": "Harish Sharma",
+    "mobileNumber": "9728503232",
+    "initialBid": 3000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/s0kb1s3cx3/PWIOI/harish.jpeg?updatedAt=1753870669728",
+    "role": "NA",
+    "description": "A dynamic top-order batsman who handles pace comfortably and rotates strike with ease. Known for clean lofted shots and consistent boundary-hitting."
+  },
+  {
+    "playerName": "Harsh Raj",
+    "mobileNumber": "8018460413",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/Harsh%20Raj.jpeg",
+    "role": "Batsman",
+    "description": "NA"
+  },
+  {
+    "playerName": "Kirtan Nahar",
+    "mobileNumber": "7986363746",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/Kirtan%20Nahar.jpeg",
+    "role": "NA",
+    "description": "NA"
+  },
+  {
+    "playerName": "kishan kumar",
+    "mobileNumber": "9569324690",
+    "initialBid": 2000,
+    "stats": "Inning : 6, Runs : 52, Strike Rate : 116, Wickets : 0, Economy : 0",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/kishan.png",
+    "role": "Allrounder",
+    "description": "Absolute hitter can take on any bowler, who can bowl as well"
+  },
+  {
+    "playerName": "Krish Gupta",
+    "mobileNumber": "8006734002",
+    "initialBid": 3000,
+    "stats": "Inning : 5, Runs : 24, Strike Rate : 106, Wickets : 0, Economy : 0",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/krish.jpg",
+    "role": "Batsman",
+    "description": "An in-form opener who has delivered exceptional performances in recent months. Consistently maintains a run rate above 6, giving his team strong starts every time."
+  },
+  {
+    "playerName": "Kushal",
+    "mobileNumber": "8010369032",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/Kushal.webp",
+    "role": "Batsman",
+    "description": "NA"
+  },
+  {
+    "playerName": "Nihaal",
+    "mobileNumber": "6309576716",
+    "initialBid": 3000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/s0kb1s3cx3/PWIOI/nihal.jpeg",
+    "role": "Batsman",
+    "description": "NA"
+  },
+  {
+    "playerName": "Nitish Yadav",
+    "mobileNumber": "8787860163",
+    "initialBid": 3000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/nitishYadav.jpg",
+    "role": "Allrounder",
+    "description": "Left hand Batsman & Right arm medium fast bowler"
+  },
+  {
+    "playerName": "Pardeep kumar",
+    "mobileNumber": "9050480475",
+    "initialBid": 5000,
+    "stats": "Inning : 19, Runs : 101, Strike Rate : 108, Wickets : 20, Economy : 8.66",
+    "imageUrl": "https://ik.imagekit.io/s0kb1s3cx3/PWIOI/Avatar.png?updatedAt=1749838221202",
+    "role": "Allrounder",
+    "description": "A very talented and clever all-rounder with tons of turf-cricket experience, adaptable to any position. Capable of hitting boundaries effortlessly and skilled enough to trouble any star batsman with the ball."
+  },
+  {
+    "playerName": "Parv manglani",
+    "mobileNumber": "8827742820",
+    "initialBid": 3000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/Parv.jpeg",
+    "role": "Allrounder",
+    "description": "Left hand Batsman who can build inning and hit sixes after a good start"
+  },
+  {
+    "playerName": "Pradeepp",
+    "mobileNumber": "9515228117",
+    "initialBid": 5000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/s0kb1s3cx3/PWIOI/Avatar.png?updatedAt=1749838221202",
+    "role": "Batsman",
+    "description": "NA"
+  },
+  {
+    "playerName": "Prajwal Chichghare",
+    "mobileNumber": "9075137950",
+    "initialBid": 3000,
+    "stats": "Inning : 18, Runs : 154, Strike Rate : 127, Wickets : 0, Economy : 0",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/Parajwal.jpg",
+    "role": "Batsman",
+    "description": "A dynamic and powerful opening batsman who rotates strike with ease. Equally capable of sending the ball out of the park with clean, commanding hits."
+  },
+  {
+    "playerName": "Pushkar Pallav",
+    "mobileNumber": "7842839219",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/s0kb1s3cx3/PWIOI/Avatar.png?updatedAt=1749838221202",
+    "role": "Batsman",
+    "description": "NA"
+  },
+  {
+    "playerName": "Ram Charan",
+    "mobileNumber": "9381598611",
+    "initialBid": 3000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/s0kb1s3cx3/PWIOI/IMG_2482_l3%20-%20Ramcharan%20Inakollu.jpeg",
+    "role": "Batsman",
+    "description": "NA"
+  },
+  {
+    "playerName": "Raman",
+    "mobileNumber": "8340553827",
+    "initialBid": 5000,
+    "stats": "Inning : 15, Runs : 207, Strike Rate : 113, Wickets : 0, Economy : 0",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/Raman.jpeg",
+    "role": "Batsman",
+    "description": "A composed opening batsman known for playing sensible, calculated cricket. Capable of accelerating smoothly and gearing up the innings in the final overs."
+  },
+  {
+    "playerName": "Ravi Kumar",
+    "mobileNumber": "9608710567",
+    "initialBid": 3000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/Ravi.jpg",
+    "role": "Batsman",
+    "description": "A pocket-sized dynamite and pure power hitter who can dominate any attack. Flexible enough to open the innings or stabilize the middle order with explosive intent."
+  },
+  {
+    "playerName": "Rishikesh Wagh",
+    "mobileNumber": "8830505156",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/RishikeshWagh.heic",
+    "role": "Batsman",
+    "description": "NA"
+  },
+  {
+    "playerName": "Ronak",
+    "mobileNumber": "9262935755",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/ronak.jpg",
+    "role": "Allrounder",
+    "description": "NA"
+  },
+  {
+    "playerName": "Rutik Mane",
+    "mobileNumber": "9579459760",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/rutik.png",
+    "role": "Batsman",
+    "description": "A genuine wicket-taker with disciplined right-arm medium pace, capable of breaking partnerships. Bats confidently in the middle order and contributes handy, valuable runs when needed."
+  },
+  {
+    "playerName": "Sachin Gupta",
+    "mobileNumber": "7359003310",
+    "initialBid": 3000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/sachinGupta.jpg",
+    "role": "Batsman",
+    "description": "A dependable batsman who can score useful runs whenever the team needs them. A tall, smart fielder who consistently saves crucial sixes at long-off with exceptional awareness."
+  },
+  {
+    "playerName": "Sandeep",
+    "mobileNumber": "7518977237",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/sandeep.jpg",
+    "role": "Bowler",
+    "description": "Right handed batswan who can hit sixes and known for multiple last over hits for running cause single handedly"
+  },
+  {
+    "playerName": "Sharad",
+    "mobileNumber": "7905983537",
+    "initialBid": 3000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/sharad.jpg",
+    "role": "Batsman",
+    "description": "Left handed bowler and a wicket taker"
+  },
+  {
+    "playerName": "Shashi",
+    "mobileNumber": "6304380138",
+    "initialBid": 3000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/s0kb1s3cx3/PWIOI/Avatar.png?updatedAt=1749838221202",
+    "role": "Allrounder",
+    "description": "NA"
+  },
+  {
+    "playerName": "SHIV RATHORE",
+    "mobileNumber": "9887876464",
+    "initialBid": 5000,
+    "stats": "Inning : 91, Runs : 1569, Strike Rate : 174, Wickets : 44, Economy : 7.48",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/Shiv.jpg",
+    "role": "Allrounder",
+    "description": "An aggressive on-field all-rounder who is a genuine opening fast bowler and a destructive opening batsman. Can take on any bowler on any day, setting the tone with fearless intent."
+  },
+  {
+    "playerName": "Shrikant zunjare",
+    "mobileNumber": "7972787704",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/shrikant.png",
+    "role": "Batsman",
+    "description": "NA"
+  },
+  {
+    "playerName": "Srinivasa",
+    "mobileNumber": "6382348439",
+    "initialBid": 3000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/srini.jpeg",
+    "role": "Allrounder",
+    "description": "A reliable left-arm medium pacer who delivers disciplined spells and breaks partnerships. Can also contribute handy runs in the middle order, adding depth to the lineup."
+  },
+  {
+    "playerName": "Subhash rajgor",
+    "mobileNumber": "9313204431",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/s0kb1s3cx3/PWIOI/Avatar.png?updatedAt=1749838221202",
+    "role": "Allrounder",
+    "description": "NA"
+  },
+  {
+    "playerName": "Suman L",
+    "mobileNumber": "9551211796",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/suman.jpg",
+    "role": "Allrounder",
+    "description": "NA"
+},
+  {
+    "playerName": "Sumit singh yadav",
+    "mobileNumber": "9799247019",
+    "initialBid": 3000,
+    "stats": "Inning : 17, Runs : 52, Strike Rate : 111, Wickets : 12, Economy : 7.68",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/Sumit%20yadav.jpg",
+    "role": "Allrounder",
+    "description":"A wicket taker left handed bowler who can bat in middle order as well and can score runs whenever the team needs them."
+
+},
+  {
+    "playerName": "Suraj chaudhary",
+    "mobileNumber": "9102661240",
+    "initialBid": 3000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/surajChaudhary.jpg",
+    "role": "Batsman",
+    "description": "A consistent hitter who can build inning and field well " 
+},
+  {
+    "playerName": "Suraj Kumar",
+    "mobileNumber": "6299846516",
+    "initialBid": 5000,
+    "stats": "Inning : 8, Runs : 43, Strike Rate : 103, Wickets : 5, Econsurajomy : 10.2",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/Suraj%20Yadav.jpg",
+    "role": "Allrounder",
+    "description": "A versatile all-rounder wicket taker and very tall fast bowler who hits the deck hard and controls the run rate with ease. Capable of playing handsome attacking shots, adding valuable lower-order runs."
+
+  },
+  {
+    "playerName": "Tanmay R",
+    "mobileNumber": "9307488597",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/s0kb1s3cx3/PWIOI/Avatar.png?updatedAt=1749838221202",
+    "role": "Batsman",
+    "description": "NA"
+  },
+  {
+    "playerName": "Umer Sheikh",
+    "mobileNumber": "8494030299",
+    "initialBid": 3000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/umar.jpg",
+    "role": "Batsman",
+    "description": "A super-fast bowler who can bat"
+  },
+  {
+    "playerName": "Umesh sharma",
+    "mobileNumber": "8383009318",
+    "initialBid": 5000,
+    "stats": "Inning : 18, Runs : 322, Strike Rate : 151.2, Wickets : 25, Economy : 5.2",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/UmeshSharma.jpg",
+    "role": "Allrounder",
+    "description": "A perfect all-rounder every team wants — reliable with both bat and ball. A clever bowler and a clean middle-order striker who can shift momentum instantly."
+  },
+  {
+    "playerName": "Vedant",
+    "mobileNumber": "6267225523",
+    "initialBid": 2000,
+    "stats": "Matches: 7, Innings: 4, Runs: 33, Highest Score: 13, Avg: 8.24, Strike Rate: 107",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/vedant.jpg",
+    "role": "Allrounder",
+    "description": "A clean-striking middle-order batsman who can boost the scoring rate in the final overs. A safe and reliable fielder who adds stability to the team’s defense."
+  },
+  {
+    "playerName": "Yashraj Shrivastava",
+    "mobileNumber": "8839664523",
+    "initialBid": 3000,
+    "stats": "Inning : 11, Runs : 151, Strike Rate : 102, Wickets : 3, Economy : 12.5",
+    "imageUrl": "https://ik.imagekit.io/tvz1mupab/yashraj.jpeg",
+    "role": "Batsman",
+    "description": "A smart batsman who rotates strike efficiently and finds gaps with ease. Also a clean hitter who can contribute valuable overs with the ball when needed."
+  },
+  {
+    "playerName": "Om patil",
+    "mobileNumber": "7066657903",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/om%20patil%20.jpg",
+    "role": "Batsman",
+    "description": "Right Handed Strong batsman a pure hitter"
+  },
+  {
+    "playerName": "Manthan Modi",
+    "mobileNumber": "8999920330",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/tvz1mupab/Screenshot%20from%202025-11-28%2000-34-59.png",
+    "role": "Batsman",
+    "description": "NA"
+  },
+  {
+    "playerName": "Harsh Kumar",
+    "mobileNumber": "9102731033",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/s0kb1s3cx3/PWIOI/Avatar.png?updatedAt=1749838221202",
+    "role": "Bowler",
+    "description": "NA"
+  },
+  {
+    "playerName": "Param",
+    "mobileNumber": "9515678213",
+    "initialBid": 2000,
+    "stats": "Not Available",
+    "imageUrl": "https://ik.imagekit.io/yellocricket2025/PARAM.jpg",
+    "role": "Batsman",
+    "description": "NA"
+  },
+  {
+    "playerName":"Md Osama",
+    "mobileNumber":"7050998435",
+    "initialBid":3000,
+    "stats":"Not Available",
+    "role": "Allrounder",
+    "imageUrl":"https://ik.imagekit.io/s0kb1s3cx3/PWIOI/osm.jpeg",
+    "description":"NA"
+    
+  },
+   {
+    "playerName":"Subhash",
+    "mobileNumber":"9999999999",
+    "initialBid":2000,
+    "stats":"Not Available",
+    "role": "Batsman",
+    "imageUrl":"https://ik.imagekit.io/s0kb1s3cx3/PWIOI/Screenshot_20251127-094616.Files%20by%20Google%20(1)%20-%20Shubhash%20Rajgor.jpg?updatedAt=1764268589635",
+    "description":"NA"
+    
+  },
+  {
+    "playerName":"Ankit Suman",
+    "mobileNumber":"9999999899",
+    "initialBid":3000,
+    "stats":"Not Available",
+    "role": "Allrounder",
+    "imageUrl":"https://ik.imagekit.io/s0kb1s3cx3/PWIOI/Avatar.png?updatedAt=1749838221202",
+    "description":"Represented at club level having experienceof 15 year played in Under 16 as well."
+  }
+]
