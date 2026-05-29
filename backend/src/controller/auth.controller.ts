@@ -192,7 +192,7 @@ export const logout = async (req: Request, res: Response) => {
         if (payload?.exp) {
           // blacklist token until it naturally expires
           await redisClient.set(`blacklist:${token}`, "1");
-          await redisClient.expireAt(`blacklist:${token}`, payload.exp);
+          await redisClient.expireat(`blacklist:${token}`, payload.exp);
         }
       } catch (err) {
         console.error("JWT decode failed:", err);

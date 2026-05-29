@@ -39,13 +39,14 @@ const TeamCard = ({
   };
 
   return (
-    <motion.div 
-      whileHover={{ y: -6 }} 
+    <Link href={`/teams/${team.id}`} className="block h-full">
+    <motion.div
+      whileHover={{ y: -6 }}
       transition={{ type: 'spring', stiffness: 320, damping: 24 }}
       className="group h-full"
     >
         <div className="relative h-full">
-          <Card className="theme-card-strong relative rounded-2xl h-full overflow-hidden shadow-xl transition-all duration-300">
+          <Card className="theme-card-strong relative rounded-2xl h-full overflow-hidden shadow-xl transition-all duration-300 cursor-pointer">
             {isAdmin && (
               <div className="absolute top-3 right-3 z-30" data-team-actions="true">
                 <DropdownMenu>
@@ -121,13 +122,12 @@ const TeamCard = ({
                   initial={{ x: -10 }}
                   whileHover={{ x: 0 }}
                 >
-                  <Link
-                    href={`/teams/${team.id}`}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-secondary text-foreground hover:bg-muted"
+                  <div
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-secondary text-foreground"
                     aria-label={`Open ${team.name}`}
                   >
                     <ChevronRight className="h-5 w-5" />
-                  </Link>
+                  </div>
                 </motion.div>
               </div>
 
@@ -189,6 +189,7 @@ const TeamCard = ({
           </Card>
         </div>
     </motion.div>
+    </Link>
   );
 };
 

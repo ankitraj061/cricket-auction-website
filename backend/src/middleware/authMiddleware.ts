@@ -29,8 +29,8 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
 
-    const cached = await redisClient.get(`user:${decoded.id}`);
-    const isBlacklisted = await redisClient.get(`blacklist:${token}`);
+    const cached = await redisClient.get<string>(`user:${decoded.id}`);
+    const isBlacklisted = await redisClient.get<string>(`blacklist:${token}`);
 
 if (isBlacklisted) {
   return res.status(401).json({ error: "Unauthorized: Token expired" });

@@ -13,6 +13,7 @@ import {
   addPlayerHandler,
   updatePlayerHandler,
   deletePlayerHandler,
+  reorderPlayersHandler,
   createTeam,
   updateTeamHandler,
   deleteTeamHandler,
@@ -29,6 +30,7 @@ router.post('/players', authMiddleware, addPlayerHandler);
 router.put('/players/sell',authMiddleware, sellPlayer);
 router.post('/players/exchange', authMiddleware, exchangePlayersHandler);
 router.put('/players/unsold-all',authMiddleware, markAllPlayersUnsold);
+router.put('/players/reorder', authMiddleware, reorderPlayersHandler);
 router.put('/players/:id/unsold',authMiddleware, markPlayerUnsold);
 router.put('/players/:id', authMiddleware, updatePlayerHandler);
 router.delete('/players/:id', authMiddleware, deletePlayerHandler);

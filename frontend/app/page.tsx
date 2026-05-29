@@ -215,7 +215,7 @@ const HomePage = () => {
     }
 
     setSettingsSubmitting(true);
-    try {
+    try { 
       const response = await axiosClient.put('/api/auction/settings', {
         ...settingsForm,
         allowedBasePrices: normalizedAllowedBasePrices,
@@ -399,7 +399,7 @@ const HomePage = () => {
       </div>
 
       <div className="relative z-30 bg-card border-t border-border">
-        <RetainedPlayers />
+        {/* <RetainedPlayers /> */}
         <CricketTournamentTimeline />
 
         <footer className="border-t border-border py-8 px-2 text-center bg-card">
