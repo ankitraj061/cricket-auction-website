@@ -5,11 +5,11 @@ import { AxiosError } from 'axios';
 import PlayerCard from '@/components/PlayerCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Home, Filter, X, Sparkles, TrendingUp, Plus, RotateCcw, Repeat } from 'lucide-react';
+import { Search, Home, Filter, X, Sparkles, TrendingUp, Plus, RotateCcw, Repeat, GripVertical, ListOrdered } from 'lucide-react';
 import Link from 'next/link';
 import axiosClient from '../client/axiosClient';
 import { AuctionSettings, Player, Team } from '@/app/types/type';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
@@ -63,8 +63,8 @@ const Players = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'sold' | 'unsold'>('all');
-  const [priceFilter, setPriceFilter] = useState<number | 'all'>('all');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'BATSMAN' | 'BOWLER' | 'ALLROUNDER'>('all');
+  const [priceFilter, setPriceFilter] = useState<Set<number>>(new Set());
+  const [roleFilter, setRoleFilter] = useState<Set<'BATSMAN' | 'BOWLER' | 'ALLROUNDER'>>(new Set());
 
   const [playerDialogOpen, setPlayerDialogOpen] = useState(false);
   const [playerDialogMode, setPlayerDialogMode] = useState<'create' | 'edit'>('create');
@@ -92,6 +92,10 @@ const Players = () => {
   const [exchangeOutgoingPlayerId, setExchangeOutgoingPlayerId] = useState('');
   const [exchangeCash, setExchangeCash] = useState('0');
   const [exchangeSubmitting, setExchangeSubmitting] = useState(false);
+
+  const [reorderDialogOpen, setReorderDialogOpen] = useState(false);
+  const [reorderList, setReorderList] = useState<Player[]>([]);
+  const [reorderSubmitting, setReorderSubmitting] = useState(false);
 
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const isAdmin = isAuthenticated && user?.role === 'ADMIN';
@@ -163,15 +167,9 @@ const Players = () => {
       if (statusFilter === 'sold') matchesStatus = isSold;
       if (statusFilter === 'unsold') matchesStatus = !isSold;
 
-      let matchesPrice = true;
-      if (priceFilter !== 'all') {
-        matchesPrice = player.basePrice === priceFilter;
-      }
+      const matchesPrice = priceFilter.size === 0 || priceFilter.has(player.basePrice);
 
-      let matchesRole = true;
-      if (roleFilter !== 'all') {
-        matchesRole = player.role === roleFilter;
-      }
+      const matchesRole = roleFilter.size === 0 || roleFilter.has(player.role as 'BATSMAN' | 'BOWLER' | 'ALLROUNDER');
 
       return matchesSearch && matchesStatus && matchesPrice && matchesRole;
     });
@@ -180,11 +178,11 @@ const Players = () => {
   const clearFilters = () => {
     setSearchQuery('');
     setStatusFilter('all');
-    setPriceFilter('all');
-    setRoleFilter('all');
+    setPriceFilter(new Set());
+    setRoleFilter(new Set());
   };
 
-  const hasActiveFilters = statusFilter !== 'all' || priceFilter !== 'all' || roleFilter !== 'all' || !!searchQuery;
+  const hasActiveFilters = statusFilter !== 'all' || priceFilter.size > 0 || roleFilter.size > 0 || !!searchQuery;
 
   const selectedIncomingPlayer = useMemo(
     () => soldPlayers.find((player) => player.id === Number(exchangeIncomingPlayerId)),
@@ -499,6 +497,34 @@ const Players = () => {
     }
   };
 
+  const openReorderDialog = () => {
+    const sorted = [...players].sort((a, b) => {
+      const aOrder = a.auctionOrder ?? Number.MAX_SAFE_INTEGER;
+      const bOrder = b.auctionOrder ?? Number.MAX_SAFE_INTEGER;
+      return aOrder - bOrder;
+    });
+    setReorderList(sorted);
+    setReorderDialogOpen(true);
+  };
+
+  const handleSaveOrder = async () => {
+    setReorderSubmitting(true);
+    try {
+      const payload = reorderList.map((player, index) => ({
+        id: player.id,
+        auctionOrder: index + 1,
+      }));
+      await axiosClient.put('/api/auction/players/reorder', payload);
+      toast.success('Auction order saved');
+      setReorderDialogOpen(false);
+      await fetchData();
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to save order'));
+    } finally {
+      setReorderSubmitting(false);
+    }
+  };
+
   return (
     <div className="theme-page-bg min-h-screen text-foreground relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -556,6 +582,13 @@ const Players = () => {
                 >
                   <Repeat className="h-4 w-4 mr-2" />
                   Exchange Players
+                </Button>
+                <Button
+                  onClick={openReorderDialog}
+                  className={uiTokens.adminSecondaryButton}
+                >
+                  <ListOrdered className="h-4 w-4 mr-2" />
+                  Set Auction Order
                 </Button>
               </>
             )}
@@ -677,58 +710,84 @@ const Players = () => {
                 <div className="space-y-2">
                   <label className="text-xs font-medium theme-muted uppercase tracking-wider">Base Price</label>
                   <div className="flex flex-wrap gap-2">
-                    {(['all', ...allowedBasePrices] as (number | 'all')[]).map((price) => (
-                      <motion.button
-                        key={price}
-                        whileHover={{ scale: 1.05, y: -2 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setPriceFilter(price)}
-                        className={`relative px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                          priceFilter === price
-                            ? 'bg-primary text-primary-foreground shadow-lg'
-                            : 'bg-secondary/80 text-foreground/80 hover:bg-muted border border-border'
-                        }`}
-                      >
-                        {priceFilter === price && (
-                          <motion.div
-                            layoutId="priceFilter"
-                            className="absolute inset-0 bg-primary rounded-xl"
-                            initial={false}
-                            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                          />
-                        )}
-                        <span className="relative z-10">{price === 'all' ? 'All Prices' : `₹${(price / 1000).toFixed(0)}K`}</span>
-                      </motion.button>
-                    ))}
+                    <motion.button
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setPriceFilter(new Set())}
+                      className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
+                        priceFilter.size === 0
+                          ? 'bg-primary text-primary-foreground shadow-lg'
+                          : 'bg-secondary/80 text-foreground/80 hover:bg-muted border border-border'
+                      }`}
+                    >
+                      All Prices
+                    </motion.button>
+                    {allowedBasePrices.map((price) => {
+                      const selected = priceFilter.has(price);
+                      return (
+                        <motion.button
+                          key={price}
+                          whileHover={{ scale: 1.05, y: -2 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => {
+                            setPriceFilter((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(price)) next.delete(price); else next.add(price);
+                              return next;
+                            });
+                          }}
+                          className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
+                            selected
+                              ? 'bg-primary text-primary-foreground shadow-lg ring-2 ring-primary/40'
+                              : 'bg-secondary/80 text-foreground/80 hover:bg-muted border border-border'
+                          }`}
+                        >
+                          ₹{(price / 1000).toFixed(0)}K
+                        </motion.button>
+                      );
+                    })}
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-xs font-medium theme-muted uppercase tracking-wider">Player Role</label>
                   <div className="flex flex-wrap gap-2">
-                    {(['all', 'BATSMAN', 'BOWLER', 'ALLROUNDER'] as const).map((role) => (
-                      <motion.button
-                        key={role}
-                        whileHover={{ scale: 1.05, y: -2 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setRoleFilter(role)}
-                        className={`relative px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                          roleFilter === role
-                            ? 'bg-accent text-accent-foreground shadow-lg'
-                            : 'bg-secondary/80 text-foreground/80 hover:bg-muted border border-border'
-                        }`}
-                      >
-                        {roleFilter === role && (
-                          <motion.div
-                            layoutId="roleFilter"
-                            className="absolute inset-0 bg-accent rounded-xl"
-                            initial={false}
-                            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                          />
-                        )}
-                        <span className="relative z-10">{role === 'all' ? 'All Roles' : role}</span>
-                      </motion.button>
-                    ))}
+                    <motion.button
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setRoleFilter(new Set())}
+                      className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
+                        roleFilter.size === 0
+                          ? 'bg-accent text-accent-foreground shadow-lg'
+                          : 'bg-secondary/80 text-foreground/80 hover:bg-muted border border-border'
+                      }`}
+                    >
+                      All Roles
+                    </motion.button>
+                    {(['BATSMAN', 'BOWLER', 'ALLROUNDER'] as const).map((role) => {
+                      const selected = roleFilter.has(role);
+                      return (
+                        <motion.button
+                          key={role}
+                          whileHover={{ scale: 1.05, y: -2 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => {
+                            setRoleFilter((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(role)) next.delete(role); else next.add(role);
+                              return next;
+                            });
+                          }}
+                          className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
+                            selected
+                              ? 'bg-accent text-accent-foreground shadow-lg ring-2 ring-accent/40'
+                              : 'bg-secondary/80 text-foreground/80 hover:bg-muted border border-border'
+                          }`}
+                        >
+                          {role}
+                        </motion.button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -1185,6 +1244,51 @@ const Players = () => {
               disabled={exchangeSubmitting || !exchangeIncomingPlayerId || !exchangeRequestedTeamId}
             >
               {exchangeSubmitting ? 'Applying...' : 'Confirm Exchange'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={reorderDialogOpen} onOpenChange={setReorderDialogOpen}>
+        <DialogContent className={`${uiTokens.dialogContent} max-w-lg`}>
+          <DialogHeader>
+            <DialogTitle className={uiTokens.dialogTitle}>Set Auction Order</DialogTitle>
+            <DialogDescription className={uiTokens.dialogDescription}>
+              Drag players to set the order they appear in the auction. Players at the top go first.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[60vh] overflow-y-auto pr-1">
+            <Reorder.Group
+              axis="y"
+              values={reorderList}
+              onReorder={setReorderList}
+              className="space-y-1.5"
+            >
+              {reorderList.map((player, index) => (
+                <Reorder.Item
+                  key={player.id}
+                  value={player}
+                  className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 cursor-grab active:cursor-grabbing select-none"
+                >
+                  <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span className="w-6 text-center text-xs font-bold text-muted-foreground flex-shrink-0">
+                    {index + 1}
+                  </span>
+                  <span className="flex-1 text-sm font-medium text-foreground truncate">{player.name}</span>
+                  <span className="text-xs text-muted-foreground flex-shrink-0">{player.role}</span>
+                  <span className="text-xs font-semibold text-primary flex-shrink-0">₹{player.basePrice.toLocaleString()}</span>
+                </Reorder.Item>
+              ))}
+            </Reorder.Group>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReorderDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveOrder} disabled={reorderSubmitting}>
+              {reorderSubmitting ? 'Saving...' : 'Save Order'}
             </Button>
           </DialogFooter>
         </DialogContent>

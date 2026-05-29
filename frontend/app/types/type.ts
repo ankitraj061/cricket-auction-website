@@ -8,6 +8,7 @@ export type Player = {
   stats?: string;
   playerImageUrl?: string;
   isSold: boolean;
+  auctionOrder?: number | null;
   teamId?: number | null;
   team?: {
     id: number;

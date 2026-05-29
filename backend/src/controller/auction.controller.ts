@@ -97,6 +97,12 @@ const sortPlayersForAuction = (
   roleOrder: RoleOrder
 ) => {
   return [...players].sort((a, b) => {
+    // Manual auction order takes priority; null/undefined falls to the end
+    const aOrder = a.auctionOrder ?? Number.MAX_SAFE_INTEGER;
+    const bOrder = b.auctionOrder ?? Number.MAX_SAFE_INTEGER;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+
+    // Fall back to settings-based ordering for players without a manual order
     if (roleOrder !== 'NO_ORDER') {
       const roleDelta = getRolePriorityWeight(a.role, roleOrder) - getRolePriorityWeight(b.role, roleOrder);
       if (roleDelta !== 0) return roleDelta;
@@ -1203,6 +1209,39 @@ export const updateAuctionSettingsHandler = async (req: Request, res: Response):
       message: 'Auction settings updated successfully',
       ...result,
     });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const reorderPlayersHandler = async (req: Request, res: Response): Promise<void> => {
+  if (!ensureAdmin(req, res)) return;
+
+  try {
+    const orders: { id: number; auctionOrder: number }[] = req.body;
+
+    if (!Array.isArray(orders) || orders.length === 0) {
+      res.status(400).json({ error: 'Expected a non-empty array of { id, auctionOrder }' });
+      return;
+    }
+
+    for (const item of orders) {
+      if (typeof item.id !== 'number' || typeof item.auctionOrder !== 'number') {
+        res.status(400).json({ error: 'Each item must have numeric id and auctionOrder' });
+        return;
+      }
+    }
+
+    await prisma.$transaction(
+      orders.map(({ id, auctionOrder }) =>
+        prisma.player.update({
+          where: { id },
+          data: { auctionOrder },
+        })
+      )
+    );
+
+    res.json({ message: 'Auction order saved successfully' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

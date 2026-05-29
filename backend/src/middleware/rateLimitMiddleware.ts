@@ -8,9 +8,9 @@ export const rateLimit = async (req: Request, res: Response, next: NextFunction)
   const maxRequests = 20;
 
   try {
-    await redisClient.zRemRangeByScore(key, 0, windowStart);
+    await redisClient.zremrangebyscore(key, 0, windowStart);
 
-    const count = await redisClient.zCard(key);
+    const count = await redisClient.zcard(key);
 
     if (count >= maxRequests) {
       return res.status(429).json({
@@ -19,9 +19,7 @@ export const rateLimit = async (req: Request, res: Response, next: NextFunction)
       });
     }
 
-    await redisClient.zAdd(key, [
-      { score: now, value: Math.random().toString() }
-    ]);
+    await redisClient.zadd(key, { score: now, member: Math.random().toString() });
 
     await redisClient.expire(key, 3600);
 
