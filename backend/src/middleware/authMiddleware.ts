@@ -53,8 +53,8 @@ const user = cached
     // Clear broken/stale auth cookie so next login can set a clean token.
     res.clearCookie("auth_token", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: true,
+      sameSite: "none",
     });
     return res.status(401).json({ error: "Unauthorized: Invalid token" });
   }
