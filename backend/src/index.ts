@@ -11,7 +11,7 @@ import authRouter from "./routes/auth.route.js";
 
 
 const app = express()
-const PORT = process.env.PORT || 8000;
+const PORT = Number(process.env.PORT) || 8000;
 
 app.use(cors({ origin: [process.env.ORIGIN || "", process.env.PRODUCTION_ORIGIN || "", process.env.PRODUCTION_ORIGIN_2 || ""],
     credentials: true,
@@ -42,7 +42,7 @@ app.use('/api/auth', authRouter);
 (async () => {
   await connectRedis();
 
-  app.listen(PORT, () => {
+  app.listen(PORT,"0.0.0.0", () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
   });
 })();
