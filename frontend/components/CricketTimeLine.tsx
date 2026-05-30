@@ -162,7 +162,7 @@ export function CricketTournamentTimeline() {
       ),
     },
     {
-      title: "Day 2",
+      title: "7 Jun",
       content: (
         <div className="space-y-4">
           <div className="flex items-start gap-3">
