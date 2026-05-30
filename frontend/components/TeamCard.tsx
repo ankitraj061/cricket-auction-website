@@ -2,7 +2,7 @@
 
 import { Card } from '@/components/ui/card';
 import { Users, IndianRupee, Trophy, Sparkles, ChevronRight, MoreVertical, Pencil, Trash2 } from 'lucide-react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Team } from '@/app/types/type';
 import { motion } from 'framer-motion';
 import {
@@ -30,8 +30,13 @@ const TeamCard = ({
   onEdit,
   onDelete,
 }: TeamCardProps) => {
+  const router = useRouter();
   const pursePercentage = (team.currentPurse / initialPurse) * 100;
-  
+
+  const handleCardClick = () => {
+    router.push(`/teams/${team.id}`);
+  };
+
   const getPurseColor = () => {
     if (pursePercentage > 60) return 'bg-accent';
     if (pursePercentage > 30) return 'bg-primary';
@@ -39,22 +44,20 @@ const TeamCard = ({
   };
 
   return (
-    <Link href={`/teams/${team.id}`} className="block h-full">
     <motion.div
+      onClick={handleCardClick}
       whileHover={{ y: -6 }}
       transition={{ type: 'spring', stiffness: 320, damping: 24 }}
-      className="group h-full"
+      className="group h-full cursor-pointer"
     >
         <div className="relative h-full">
           <Card className="theme-card-strong relative rounded-2xl h-full overflow-hidden shadow-xl transition-all duration-300 cursor-pointer">
             {isAdmin && (
-              <div className="absolute top-3 right-3 z-30" data-team-actions="true">
+              <div className="absolute top-3 right-3 z-30" data-team-actions="true" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      onClick={(e) => e.stopPropagation()}
-                      onPointerDown={(e) => e.stopPropagation()}
                       className={uiTokens.actionMenuTrigger}
                       aria-label={`Open actions for ${team.name}`}
                     >
@@ -189,7 +192,6 @@ const TeamCard = ({
           </Card>
         </div>
     </motion.div>
-    </Link>
   );
 };
 
