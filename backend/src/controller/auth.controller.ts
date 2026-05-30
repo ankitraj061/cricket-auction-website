@@ -45,8 +45,8 @@ if (!isMatch || user.role !== UserRole.ADMIN) {
     // Set cookie
     res.cookie("auth_token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: true,
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -91,8 +91,8 @@ if (!isMatch || user.role !== UserRole.ADMIN) {
 
     res.cookie("auth_token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: true,
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -202,8 +202,8 @@ export const logout = async (req: Request, res: Response) => {
     // Clear cookie safely
     res.clearCookie("auth_token", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: true,
+      sameSite: "none",
     });
 
     res.status(200).json({ message: "Logged out successfully" });
@@ -257,8 +257,8 @@ export const checkAuth = async (req: Request, res: Response) => {
     console.error("checkAuth error:", err);
     res.clearCookie("auth_token", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: true,
+      sameSite: "none",
     });
     return res.status(401).json({ error: "Invalid or expired token" });
   }
