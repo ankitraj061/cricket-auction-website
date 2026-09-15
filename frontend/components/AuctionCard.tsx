@@ -3,349 +3,144 @@
 import Image from 'next/image';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { IndianRupee, Target, TrendingUp } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-
-// ✅ Local Player type matching your API response exactly
-interface Player {
-  id: number;
-  name: string;
-  mobile: string | null;
-  role: 'BATSMAN' | 'BOWLER' | 'ALLROUNDER' | 'WICKETKEEPER';
-  basePrice: number;
-  soldPrice: number | null;
-  description: string | null;
-  stats: string | null;
-  playerImageUrl: string | null;
-  teamId: number | null;
-  isSold: boolean;
-  isUnsold: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import { IndianRupee, CheckCircle2, XCircle } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
+import type { AuctionPlayer } from '@/app/types/type';
 
 interface AuctionCardProps {
-  player: Player;
-  defaultPrice?: number;
+  player: AuctionPlayer;
+  eyebrow?: string;
 }
 
-const AuctionCard = ({ player, defaultPrice }: AuctionCardProps) => {
-  const displayPrice = defaultPrice || player.basePrice;
-  const isBidding = defaultPrice && defaultPrice > player.basePrice;
+const roleConfig: Record<string, { label: string; color: string }> = {
+  batsman: { label: 'Batsman', color: 'bg-accent/20 text-accent border-accent/50' },
+  bowler: { label: 'Bowler', color: 'bg-chart-3/20 text-chart-3 border-chart-3/50' },
+  allrounder: { label: 'All-Rounder', color: 'bg-primary/20 text-primary border-primary/50' },
+  wicketkeeper: { label: 'Wicketkeeper', color: 'bg-chart-2/20 text-chart-2 border-chart-2/50' },
+};
 
-  const roleConfig = {
-    batsman: { 
-      label: 'Batsman', 
-      color: 'bg-accent/20 text-accent border-accent/50',
-      glow: 'shadow-accent/40'
-    },
-    bowler: { 
-      label: 'Bowler', 
-      color: 'bg-chart-3/20 text-chart-3 border-chart-3/50',
-      glow: 'shadow-chart-3/40'
-    },
-    allrounder: { 
-      label: 'All-Rounder', 
-      color: 'bg-primary/20 text-primary border-primary/50',
-      glow: 'shadow-primary/40'
-    },
-    wicketkeeper: { 
-      label: 'Wicketkeeper', 
-      color: 'bg-chart-2/20 text-chart-2 border-chart-2/50',
-      glow: 'shadow-chart-2/40'
-    },
-    default: { 
-      label: player.role, 
-      color: 'bg-secondary/60 text-foreground/80 border-border',
-      glow: 'shadow-border/40'
-    },
+/** `stats` arrives as free text like "Inning : 8, Runs : 30, Strike Rate : 120". */
+const parseStats = (raw: string) =>
+  raw
+    .split(',')
+    .map((chunk) => {
+      const [label, ...rest] = chunk.split(':');
+      const value = rest.join(':').trim();
+      return { label: label.trim(), value };
+    })
+    .filter((stat) => stat.label && stat.value);
+
+const AuctionCard = ({ player, eyebrow = 'Now Bidding' }: AuctionCardProps) => {
+  const reduceMotion = useReducedMotion();
+  const roleKey = player.role.toLowerCase().replace(/[^a-z]/g, '');
+  const role = roleConfig[roleKey] ?? {
+    label: player.role,
+    color: 'bg-secondary text-foreground/80 border-border',
   };
 
-  // ✅ Convert role to lowercase for roleConfig lookup
-  const roleKey = player.role.toLowerCase() as keyof typeof roleConfig;
-  const role = roleConfig[roleKey] || roleConfig.default;
-
-  const getPlayerIcon = () => {
-    const r = player.role.toLowerCase();
-    const cls = "h-16 w-16 text-muted-foreground";
-    if (r.includes('bat')) return <BatIcon className={cls} />;
-    if (r.includes('bowl')) return <BowlIcon className={cls} />;
-    if (r.includes('all')) return <AllRoundIcon className={cls} />;
-    if (r.includes('keep') || r.includes('wicket')) return <KeeperIcon className={cls} />;
-    return <BallIcon className={cls} />;
-  };
+  const stats = player.stats ? parseStats(player.stats) : [];
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      key={player.id}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="relative max-w-5xl"
+      transition={{ duration: 0.4 }}
     >
-      <Card className="relative theme-card-strong backdrop-blur-2xl border-2 border-border rounded-3xl overflow-hidden shadow-2xl">
-        {/* Animated Background Pattern */}
-        <div className="absolute inset-0 opacity-5">
-          {/* ✅ Fixed: bg-size-[14px_24px] → bg-[size:14px_24px] */}
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:14px_24px]"></div>
-        </div>
+      <Card className="theme-card-strong stadium-glow relative overflow-hidden rounded-3xl border-2 border-border p-0">
+        <div className="pointer-events-none absolute left-0 top-0 h-32 w-32 rounded-br-full bg-primary/10 blur-2xl" />
+        <div className="pointer-events-none absolute bottom-0 right-0 h-32 w-32 rounded-tl-full bg-chart-2/10 blur-2xl" />
 
-        <div className="absolute top-0 left-0 w-32 h-32 bg-primary/10 rounded-br-full blur-2xl"></div>
-        <div className="absolute bottom-0 right-0 w-32 h-32 bg-chart-2/10 rounded-tl-full blur-2xl"></div>
-
-        {/* Main Content */}
-        <div className="relative p-2 px-10">
-          {/* Player Showcase Section */}
-          <div className="items-start gap-8 mb-6 grid md:grid-cols-2 lg:grid-cols-2 sm:grid-cols-1">
-            {/* Enhanced Avatar with Holographic Ring */}
-            <motion.div 
-              className="relative shrink-0"
-              whileHover={{ scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              {/* Rotating Accent Ring */}
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-                className="absolute -inset-2 bg-primary/35 rounded-full opacity-75 blur-md"
-              ></motion.div>
-              
-              <div className="absolute -inset-1 bg-primary/25 rounded-full opacity-50 blur-sm"></div>
+        <div className="relative grid gap-6 p-5 sm:p-7 md:grid-cols-[auto_1fr] md:gap-8">
+          <div className="relative mx-auto shrink-0 md:mx-0">
+            <motion.div
+              animate={reduceMotion ? undefined : { rotate: 360 }}
+              transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
+              className="absolute -inset-2 rounded-full bg-primary/30 blur-md"
+              aria-hidden
+            />
+            <div className="relative h-40 w-40 overflow-hidden rounded-full border-4 border-border bg-card shadow-xl sm:h-52 sm:w-52">
               {player.playerImageUrl ? (
-                // ✅ Fixed: w-75 h-75 → w-48 h-48 (192px)
-                <div className="relative w-48 h-48 rounded-full overflow-hidden border-4 border-border shadow-xl bg-card">
-                  <Image
-                    src={player.playerImageUrl}
-                    alt={player.name}
-                    fill
-                    className="object-cover"
-                    sizes="192px"
-                    priority
-                  />
-                  <div className="absolute inset-0 bg-background/30"></div>
-                </div>
+                <Image
+                  src={player.playerImageUrl}
+                  alt={player.name}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 640px) 160px, 208px"
+                  priority
+                />
               ) : (
-                <div className="relative w-48 h-48 rounded-full flex items-center justify-center border-4 border-border shadow-xl bg-card backdrop-blur-sm">
-                  {getPlayerIcon()}
-                </div>
+                <span className="flex h-full w-full items-center justify-center text-5xl font-black text-muted-foreground">
+                  {player.name.charAt(0).toUpperCase()}
+                </span>
               )}
-
-              {/* Power Indicator */}
-              <motion.div
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground text-xs font-bold px-4 py-1.5 rounded-full shadow-lg border border-border/60"
-              >
-                <Target className="h-3 w-3 inline mr-1" />
-                PREMIUM
-              </motion.div>
-            </motion.div>
-
-            {/* Player Info - Glass Cards */}
-            <div className="flex-1 space-y-2 ml-6">
-              {/* Name Card */}
-              <motion.div 
-                className="theme-card backdrop-blur-xl border border-border rounded-2xl p-4 shadow-lg"
-                whileHover={{ scale: 1.02, borderColor: 'rgba(6,182,212,0.5)' }}
-              >
-                <p className="text-xs font-semibold text-primary mb-1 tracking-wider uppercase">Player Name</p>
-                <h3 className="text-3xl font-black text-foreground">
-                  {player.name}
-                </h3>
-              </motion.div>
-
-              {/* Current Bid / Base Price Card */}
-              <motion.div 
-                className={`theme-card backdrop-blur-xl border rounded-2xl p-3 transition-all duration-300 ${
-                  isBidding 
-                    ? 'border-accent/40 shadow-lg'
-                    : 'border-primary/40 shadow-lg'
-                }`}
-                whileHover={{ scale: 1.02 }}
-                animate={isBidding ? { 
-                  boxShadow: [
-                    '0 8px 32px 0 rgba(16,185,129,0.2)',
-                    '0 8px 32px 0 rgba(16,185,129,0.4)',
-                    '0 8px 32px 0 rgba(16,185,129,0.2)'
-                  ]
-                } : {}}
-                transition={{ duration: 1.5, repeat: isBidding ? Infinity : 0 }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <p className={`text-xs font-semibold tracking-wider uppercase ${
-                    isBidding ? 'text-accent' : 'text-primary'
-                  }`}>
-                    {isBidding ? 'Current Bid' : 'Base Price'}
-                  </p>
-                  
-                  {/* Live Bidding Indicator */}
-                  <AnimatePresence>
-                    {isBidding && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0 }}
-                        className="flex items-center gap-1 bg-accent/20 px-2 py-1 rounded-full"
-                      >
-                        <motion.div
-                          animate={{ scale: [1, 1.2, 1] }}
-                          transition={{ duration: 1, repeat: Infinity }}
-                        className="w-2 h-2 bg-accent rounded-full"
-                        />
-                        <span className="text-[10px] font-bold text-accent">LIVE</span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className={`p-2 rounded-xl ${
-                    isBidding ? 'bg-accent/20' : 'bg-primary/20'
-                  }`}>
-                    {isBidding ? (
-                      <TrendingUp className="h-6 w-6 text-accent " />
-                    ) : (
-                      <IndianRupee className="h-6 w-6 text-primary " />
-                    )}
-                  </div>
-                  
-                  {/* Animated Price Counter */}
-                  <motion.p
-                    key={displayPrice}
-                    initial={{ scale: 1.2, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                    className={`text-3xl font-black ${
-                      isBidding 
-                        ? 'text-accent '
-                        : 'text-primary '
-                    }`}
-                  >
-                    ₹{displayPrice.toLocaleString()}
-                  </motion.p>
-                </div>
-
-                {/* Base Price Reference when bidding */}
-                <AnimatePresence>
-                  {isBidding && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mt-2 pt-2 border-t border-border"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">Base Price:</span>
-                        <span className="text-foreground/80 font-semibold">
-                          ₹{player.basePrice.toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs mt-1">
-                        <span className="text-accent">Increase:</span>
-                        <span className="text-accent font-bold">
-                          +₹{(displayPrice - player.basePrice).toLocaleString()}
-                        </span>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-
-              {/* Role Card */}
-              <motion.div 
-                className="theme-card backdrop-blur-xl border border-border rounded-2xl p-3"
-                whileHover={{ scale: 1.02 }}
-              >
-                <p className="text-xs font-semibold text-muted-foreground mb-3 tracking-wider uppercase">Role</p>
-                <Badge
-                  variant="outline"
-                  className={`text-lg font-bold px-6 py-2 border-2 ${role.color} ${role.glow} shadow-lg`}
-                >
-                  {role.label}
-                </Badge>
-              </motion.div>
             </div>
           </div>
 
-          {/* Description Section */}
-          {player.description && (
-            <motion.div 
-              className="theme-card backdrop-blur-xl border border-border rounded-2xl p-3 mb-3 shadow-lg relative overflow-hidden"
-              whileHover={{ borderColor: 'rgba(59,130,246,0.5)' }}
-            >
-              <div className="absolute top-0 left-0 w-full h-1 bg-chart-3/70"></div>
-              
-              <p className="text-xs font-semibold text-chart-3 mb-1 tracking-wider uppercase flex items-center gap-2">
-                <span className="w-2 h-2 bg-chart-3 rounded-full animate-pulse inline-block"></span>
-                Player Profile
+          <div className="min-w-0 space-y-4 text-center md:text-left">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                {eyebrow}
               </p>
+              <h2 className="mt-1 break-words text-4xl leading-tight text-foreground sm:text-5xl lg:text-6xl">
+                {player.name}
+              </h2>
+            </div>
 
-              <p className="text-base text-foreground/85 leading-relaxed line-clamp-2 font-light">
-                {player.description}
-              </p>
-            </motion.div>
-          )}
+            <div className="flex flex-wrap items-center justify-center gap-3 md:justify-start">
+              <Badge variant="outline" className={`border-2 px-4 py-1.5 text-base font-bold ${role.color}`}>
+                {role.label}
+              </Badge>
 
-          {/* Stats Section */}
-          {player.stats && (
-            <motion.div 
-              className="theme-card backdrop-blur-xl border border-border rounded-2xl p-3 shadow-lg relative overflow-hidden"
-              whileHover={{ borderColor: 'rgba(16,185,129,0.5)' }}
-            >
-              <div className="absolute top-0 left-0 w-full h-1 bg-accent/70"></div>
-              
-              <div className="text-xs font-semibold text-accent mb-1 tracking-wider uppercase flex items-center gap-2">
-                <div className="w-2 h-2 bg-accent rounded-full animate-pulse"></div>
-                Performance Stats
-              </div>
-              <p className="text-base text-foreground/85 leading-relaxed line-clamp-2 font-light">
+              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-3 py-1.5 text-sm font-semibold text-foreground">
+                Base
+                <IndianRupee className="h-3.5 w-3.5" aria-hidden />
+                <span className="tabular-nums">{player.basePrice.toLocaleString('en-IN')}</span>
+              </span>
+
+              {player.isSold && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/50 bg-primary/15 px-3 py-1.5 text-sm font-bold text-primary">
+                  <CheckCircle2 className="h-4 w-4" aria-hidden />
+                  Already sold
+                </span>
+              )}
+              {player.isUnsold && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-destructive/50 bg-destructive/15 px-3 py-1.5 text-sm font-bold text-destructive">
+                  <XCircle className="h-4 w-4" aria-hidden />
+                  Previously unsold
+                </span>
+              )}
+            </div>
+
+            {stats.length > 0 && (
+              <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                {stats.map((stat) => (
+                  <div key={stat.label} className="theme-card rounded-xl px-3 py-2 text-center">
+                    <dt className="truncate text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {stat.label}
+                    </dt>
+                    <dd className="mt-0.5 text-lg font-black tabular-nums text-foreground">
+                      {stat.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+
+            {stats.length === 0 && player.stats && (
+              <p className="theme-card rounded-xl p-3 text-sm text-muted-foreground">
                 {player.stats}
               </p>
-            </motion.div>
-          )}
+            )}
+
+            {player.description && (
+              <p className="text-base leading-relaxed text-foreground/85">{player.description}</p>
+            )}
+          </div>
         </div>
       </Card>
     </motion.div>
   );
 };
-
-// SVG Icons
-const BatIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M12 3v14M12 3l-3 5M12 3l3 5" strokeLinecap="round" />
-    <circle cx="12" cy="19" r="2" fill="currentColor" />
-  </svg>
-);
-
-const BowlIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M2 12h20M6 8l6 8 4-10" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const AllRoundIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="10" />
-    <path d="M12 6v6l4 2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const KeeperIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M12 3v3m0 12v3M4 12h3m10 0h3M7 7l5 5 5-5M7 17l5-5 5 5" strokeLinecap="round" />
-  </svg>
-);
-
-const BallIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={className} fill="currentColor" opacity="0.9">
-    <circle cx="12" cy="12" r="9" />
-    <path
-      d="M12 3a9 9 0 0 0-7 14.2 9.5 9.5 0 0 0 14 0A9 9 0 0 0 12 3z"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-  </svg>
-);
 
 export default AuctionCard;

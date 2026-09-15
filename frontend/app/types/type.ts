@@ -31,6 +31,32 @@ export interface Team {
     players?: Player[];
 }
 
+/** Player shape returned by the auction endpoints (`/api/auction/next-player`, `/search`, `/players`). */
+export interface AuctionPlayer {
+  id: number;
+  name: string;
+  mobile: string | null;
+  role: string;
+  basePrice: number;
+  soldPrice: number | null;
+  description: string | null;
+  stats: string | null;
+  playerImageUrl: string | null;
+  teamId: number | null;
+  isSold: boolean;
+  isUnsold: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Team shape returned by `/api/auction/summary`. */
+export interface TeamSummary {
+  teamId: number;
+  name: string;
+  totalPlayers: number;
+  remainingPurse: number;
+}
+
 export interface AuctionSettings {
   id: number;
   seasonName: string;
