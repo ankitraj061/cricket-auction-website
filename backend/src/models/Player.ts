@@ -29,7 +29,7 @@ const playerSchema = new Schema<IPlayer>(
   {
     _id: { type: Number },
     name: { type: String, required: true },
-    mobile: { type: String, default: null },
+    mobile: { type: String },
     role: { type: String, enum: Object.values(Role), required: true },
     basePrice: { type: Number, required: true },
     soldPrice: { type: Number, default: null },
