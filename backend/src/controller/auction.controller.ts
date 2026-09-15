@@ -686,6 +686,10 @@ export const addPlayerHandler = async (req: Request, res: Response): Promise<voi
 
     res.status(201).json({ message: 'Player added successfully', player: toApiPlayer(createdPlayer.toObject()) });
   } catch (error: any) {
+    if (error?.code === 11000 && error?.keyPattern?.mobile) {
+      res.status(409).json({ error: 'A player with this mobile number already exists' });
+      return;
+    }
     res.status(500).json({ error: error.message });
   }
 };
@@ -726,12 +730,19 @@ export const updatePlayerHandler = async (req: Request, res: Response): Promise<
       res.status(400).json({ error: 'basePrice must be greater than 0' });
       return;
     }
-    if (mobile !== undefined) data.mobile = mobile || null;
+    const unset: Record<string, unknown> = {};
+    if (mobile !== undefined) {
+      if (mobile) {
+        data.mobile = mobile;
+      } else {
+        unset.mobile = '';
+      }
+    }
     if (description !== undefined) data.description = description || null;
     if (stats !== undefined) data.stats = stats || null;
     if (playerImageUrl !== undefined) data.playerImageUrl = playerImageUrl || null;
 
-    if (Object.keys(data).length === 0 && basePrice === undefined) {
+    if (Object.keys(data).length === 0 && Object.keys(unset).length === 0 && basePrice === undefined) {
       res.status(400).json({ error: 'No fields provided for update' });
       return;
     }
@@ -752,10 +763,18 @@ export const updatePlayerHandler = async (req: Request, res: Response): Promise<
       data.basePrice = basePrice;
     }
 
-    const updatedPlayer = await Player.findByIdAndUpdate(playerId, { $set: data }, { new: true }).lean();
+    const update: Record<string, unknown> = {};
+    if (Object.keys(data).length > 0) update.$set = data;
+    if (Object.keys(unset).length > 0) update.$unset = unset;
+
+    const updatedPlayer = await Player.findByIdAndUpdate(playerId, update, { new: true }).lean();
 
     res.json({ message: 'Player updated successfully', player: toApiPlayer(updatedPlayer) });
   } catch (error: any) {
+    if (error?.code === 11000 && error?.keyPattern?.mobile) {
+      res.status(409).json({ error: 'A player with this mobile number already exists' });
+      return;
+    }
     res.status(500).json({ error: error.message });
   }
 };
@@ -827,7 +846,7 @@ export const addPlayer = async (
     name,
     role,
     basePrice,
-    mobile: mobile || null,
+    mobile: mobile || undefined,
     description: description || null,
     stats: stats || null,
     playerImageUrl: playerImageUrl || null,
