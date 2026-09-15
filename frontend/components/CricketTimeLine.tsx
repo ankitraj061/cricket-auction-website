@@ -5,7 +5,7 @@ import { Timeline } from "@/components/ui/timeline";
 export function CricketTournamentTimeline() {
   const data = [
     {
-      title: "28 May",
+      title: "13 Sep",
       content: (
         <div className="space-y-4">
           <div className="flex items-start gap-3">
@@ -17,14 +17,14 @@ export function CricketTournamentTimeline() {
                 Player Registration
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                28 May – 30 May · Open Auction Pool Enrollment
+                Open Now – 13 Sep · Open Auction Pool Enrollment
               </p>
             </div>
           </div>
 
           <p className="text-sm leading-relaxed text-muted-foreground">
             Individual players can register for the auction pool. Submit your complete
-            profile through the form provided above. Registration closes on 30 May.
+            profile through the form provided above. Registration closes on 13 Sep.
           </p>
 
           <div className="grid gap-3 rounded-lg theme-card p-4 ">
@@ -57,7 +57,7 @@ export function CricketTournamentTimeline() {
       ),
     },
     {
-      title: "30 May",
+      title: "19 Sep",
       content: (
         <div className="space-y-4">
           <div className="flex items-start gap-3">
@@ -69,14 +69,14 @@ export function CricketTournamentTimeline() {
                 Auction Day
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Live Player Bidding Event · Evening 9:00 PM
+                Live Player Bidding Event · Evening 7:30 PM
               </p>
             </div>
           </div>
 
           <p className="text-sm leading-relaxed text-muted-foreground">
             The most exciting day! Team captains compete in live bidding to build their
-            dream squads. Strategy, excitement, and talent come together. Auction begins at 9:00 PM sharp.
+            dream squads. Strategy, excitement, and talent come together. Auction begins at 7:30 PM sharp.
           </p>
 
           <div className="border-l-4 border-primary bg-secondary/60 p-4 ">
@@ -86,7 +86,7 @@ export function CricketTournamentTimeline() {
                   Auction Starts
                 </p>
                 <p className="mt-1 text-lg font-bold text-primary">
-                  9:00 PM IST
+                  7:30 PM IST
                 </p>
               </div>
               <div className="rounded-full bg-primary/20 px-3 py-1 text-xs font-semibold text-primary ">
@@ -126,7 +126,7 @@ export function CricketTournamentTimeline() {
       ),
     },
     {
-      title: "6 Jun",
+      title: "26 Sep",
       content: (
         <div className="space-y-4">
           <div className="flex items-start gap-3">
@@ -162,7 +162,7 @@ export function CricketTournamentTimeline() {
       ),
     },
     {
-      title: "7 Jun",
+      title: "27 Sep",
       content: (
         <div className="space-y-4">
           <div className="flex items-start gap-3">

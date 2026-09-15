@@ -7,7 +7,6 @@ import { User, UserRole } from '../models/index.js';
 import { getNextSequence } from '../models/Counter.js';
 
 dotenv.config();
-
 interface JwtPayload {
   id: number;
   role: UserRole;
