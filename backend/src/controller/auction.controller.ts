@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
-import { PrismaClient, Role, UserRole, Prisma } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import mongoose, { ClientSession } from 'mongoose';
+import { Team, Player, AuctionSettings, Role, UserRole, IPlayer } from '../models/index.js';
+import { getNextSequence } from '../models/Counter.js';
+import { toApiPlayer, toApiTeam, toApiSettings } from '../utils/serialize.js';
 
 class HttpError extends Error {
   status: number;
@@ -21,7 +22,7 @@ const ensureAdmin = (req: Request, res: Response): boolean => {
 };
 
 const DEFAULT_AUCTION_SETTINGS = {
-  id: 1,
+  _id: 1,
   seasonName: 'Season 1',
   initialPurse: 100000,
   minPlayersPerTeam: 0,
@@ -32,41 +33,13 @@ const DEFAULT_AUCTION_SETTINGS = {
   isExchangeAllowed: false,
 };
 
-let auctionSettingsSchemaEnsured = false;
-
-const ensureAuctionSettingsSchema = async () => {
-  if (auctionSettingsSchemaEnsured) return;
-
-  await prisma.$executeRawUnsafe(`
-    ALTER TABLE "AuctionSettings"
-    ADD COLUMN IF NOT EXISTS "playerOrderByBasePrice" TEXT NOT NULL DEFAULT 'DESC',
-    ADD COLUMN IF NOT EXISTS "playerOrderByRole" TEXT NOT NULL DEFAULT 'NO_ORDER',
-    ADD COLUMN IF NOT EXISTS "allowedBasePrices" INTEGER[] NOT NULL DEFAULT ARRAY[2000,3000,5000]::INTEGER[],
-    ADD COLUMN IF NOT EXISTS "isExchangeAllowed" BOOLEAN NOT NULL DEFAULT false
-  `);
-
-  await prisma.$executeRawUnsafe(`
-    INSERT INTO "AuctionSettings" (
-      "id",
-      "seasonName",
-      "initialPurse",
-      "minPlayersPerTeam",
-      "maxPlayersPerTeam",
-      "createdAt",
-      "updatedAt"
-    )
-    VALUES (1, 'Season 1', 100000, 0, 11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    ON CONFLICT ("id") DO NOTHING
-  `);
-
-  auctionSettingsSchemaEnsured = true;
-};
-
 const BASE_PRICE_ORDERS = ['ASC', 'DESC', 'NONE'] as const;
 type BasePriceOrder = (typeof BASE_PRICE_ORDERS)[number];
 
 const ROLE_ORDERS = ['NO_ORDER', 'BATSMAN_FIRST', 'BOWLER_FIRST', 'ALLROUNDER_FIRST'] as const;
 type RoleOrder = (typeof ROLE_ORDERS)[number];
+
+const ROLE_SORT_RANK: Record<Role, number> = { BATSMAN: 0, BOWLER: 1, ALLROUNDER: 2 };
 
 const getRolePriorityWeight = (role: Role, roleOrder: RoleOrder): number => {
   if (roleOrder === 'NO_ORDER') return 0;
@@ -92,7 +65,7 @@ const getRolePriorityWeight = (role: Role, roleOrder: RoleOrder): number => {
 };
 
 const sortPlayersForAuction = (
-  players: Awaited<ReturnType<typeof prisma.player.findMany>>,
+  players: IPlayer[],
   basePriceOrder: BasePriceOrder,
   roleOrder: RoleOrder
 ) => {
@@ -113,7 +86,7 @@ const sortPlayersForAuction = (
       if (priceDelta !== 0) return priceDelta;
     }
 
-    return a.id - b.id;
+    return a._id - b._id;
   });
 };
 
@@ -126,14 +99,9 @@ const getNextPlayerBySettings = async () => {
     ? (settings.playerOrderByRole as RoleOrder)
     : 'NO_ORDER';
 
-  const candidates = await prisma.player.findMany({
-    where: {
-      isSold: false,
-      isUnsold: false,
-    },
-  });
+  const candidates = await Player.find({ isSold: false, isUnsold: false }).lean();
 
-  const ordered = sortPlayersForAuction(candidates, basePriceOrder, roleOrder);
+  const ordered = sortPlayersForAuction(candidates as unknown as IPlayer[], basePriceOrder, roleOrder);
   return ordered[0] || null;
 };
 
@@ -146,6 +114,12 @@ const normalizeAllowedBasePrices = (input: unknown): number[] => {
 };
 
 const isRetryableTransactionError = (error: unknown): boolean => {
+  if (error && typeof error === 'object' && 'hasErrorLabel' in error) {
+    const err = error as { hasErrorLabel: (label: string) => boolean };
+    if (err.hasErrorLabel('TransientTransactionError') || err.hasErrorLabel('UnknownTransactionCommitResult')) {
+      return true;
+    }
+  }
   const message = error instanceof Error ? error.message : String(error);
   const normalized = message.toLowerCase();
   return (
@@ -156,86 +130,90 @@ const isRetryableTransactionError = (error: unknown): boolean => {
 };
 
 const runTransactionWithRetry = async <T>(
-  callback: (tx: Prisma.TransactionClient) => Promise<T>,
+  callback: (session: ClientSession) => Promise<T>,
   retries = 1
 ): Promise<T> => {
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const session = await mongoose.startSession();
     try {
-      return await prisma.$transaction((tx) => callback(tx), {
-        maxWait: 10000,
-        timeout: 15000,
+      let result!: T;
+      await session.withTransaction(async () => {
+        result = await callback(session);
       });
+      return result;
     } catch (error) {
       lastError = error;
       if (!isRetryableTransactionError(error) || attempt === retries) {
         throw error;
       }
+    } finally {
+      await session.endSession();
     }
   }
 
   throw lastError;
 };
 
-const getAuctionSettings = async (tx: PrismaClient | Prisma.TransactionClient = prisma) => {
-  // Fallback for environments where DB migrations are blocked/unavailable.
-  if (tx === prisma) {
-    await ensureAuctionSettingsSchema();
-  }
-  return tx.auctionSettings.upsert({
-    where: { id: 1 },
-    update: {},
-    create: DEFAULT_AUCTION_SETTINGS,
-  });
+const getAuctionSettings = async (session?: ClientSession) => {
+  const settings = await AuctionSettings.findOneAndUpdate(
+    { _id: 1 },
+    { $setOnInsert: DEFAULT_AUCTION_SETTINGS },
+    { upsert: true, new: true, session }
+  ).lean();
+  return settings!;
+};
+
+const getTeamsWithPlayerCount = async () => {
+  const teams = await Team.aggregate([
+    { $sort: { name: 1 } },
+    {
+      $lookup: {
+        from: 'players',
+        localField: '_id',
+        foreignField: 'teamId',
+        as: 'players',
+      },
+    },
+    {
+      $project: {
+        name: 1,
+        captainName: 1,
+        captainImage: 1,
+        currentPurse: 1,
+        totalPlayers: { $size: '$players' },
+      },
+    },
+  ]);
+  return teams;
 };
 
 export const getAllPlayers = async (req: Request, res: Response): Promise<void> => {
   try {
     const [players, teams] = await Promise.all([
-      prisma.player.findMany({
-        include: {
-          team: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-        orderBy: [
-          { basePrice: 'desc' }, // 5k first
-          { role: 'asc' }, // BOWLER, BATSMAN, ALLROUNDER based on enum order
-          { name: 'asc' },
-        ],
-      }),
-      prisma.team.findMany({
-        select: {
-          id: true,
-          name: true,
-          captainName: true,
-          captainImage: true,
-          currentPurse: true,
-          _count: {
-            select: {
-              players: true,
-            },
-          },
-        },
-        orderBy: { name: 'asc' },
-      }),
+      Player.find({}).populate({ path: 'teamId', select: '_id name' }).lean(),
+      getTeamsWithPlayerCount(),
     ]);
 
-    const teamsResponse = teams.map((team) => ({
-      id: team.id,
+    const orderedPlayers = [...players].sort((a: any, b: any) => {
+      if (b.basePrice !== a.basePrice) return b.basePrice - a.basePrice;
+      const roleDelta = ROLE_SORT_RANK[a.role as Role] - ROLE_SORT_RANK[b.role as Role];
+      if (roleDelta !== 0) return roleDelta;
+      return a.name.localeCompare(b.name);
+    });
+
+    const teamsResponse = teams.map((team: any) => ({
+      id: team._id,
       name: team.name,
       captainName: team.captainName,
       captainImage: team.captainImage,
       currentPurse: team.currentPurse,
       remainingPurse: team.currentPurse,
-      totalPlayers: team._count.players,
+      totalPlayers: team.totalPlayers,
     }));
 
-    res.json({ players, teams: teamsResponse });
+    res.json({ players: orderedPlayers.map(toApiPlayer), teams: teamsResponse });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -243,30 +221,16 @@ export const getAllPlayers = async (req: Request, res: Response): Promise<void> 
 
 export const getAllTeams = async (req: Request, res: Response): Promise<void> => {
   try {
-    const teams = await prisma.team.findMany({
-      select: {
-        id: true,
-        name: true,
-        captainName: true,
-        captainImage: true,
-        currentPurse: true,
-        _count: {
-          select: {
-            players: true,
-          },
-        },
-      },
-      orderBy: { name: 'asc' },
-    });
+    const teams = await getTeamsWithPlayerCount();
 
-    const response = teams.map((team) => ({
-      id: team.id,
+    const response = teams.map((team: any) => ({
+      id: team._id,
       name: team.name,
       captainName: team.captainName,
       captainImage: team.captainImage,
       currentPurse: team.currentPurse,
       remainingPurse: team.currentPurse,
-      totalPlayers: team._count.players,
+      totalPlayers: team.totalPlayers,
     }));
 
     res.json(response);
@@ -278,39 +242,18 @@ export const getAllTeams = async (req: Request, res: Response): Promise<void> =>
 export const getTeamById = async (req: Request, res: Response): Promise<void> => {
   try {
     const teamId = parseInt(req.params.id, 10);
-    const team = await prisma.team.findUnique({
-      where: { id: teamId },
-      select: {
-        id: true,
-        name: true,
-        captainName: true,
-        captainImage: true,
-        currentPurse: true,
-        players: {
-          select: {
-            id: true,
-            name: true,
-            role: true,
-            basePrice: true,
-            mobile: true,
-            description: true,
-            stats: true,
-            playerImageUrl: true,
-            isSold: true,
-            teamId: true,
-            soldPrice: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-          orderBy: [{ isSold: 'desc' }, { soldPrice: 'desc' }, { basePrice: 'desc' }, { name: 'asc' }],
-        },
-      },
-    });
+    const team = await Team.findById(teamId).lean();
     if (!team) {
       res.status(404).json({ error: 'Team not found' });
       return;
     }
-    res.json(team);
+
+    const players = await Player.find({ teamId })
+      .select('name role basePrice mobile description stats playerImageUrl isSold teamId soldPrice createdAt updatedAt')
+      .sort({ isSold: -1, soldPrice: -1, basePrice: -1, name: 1 })
+      .lean();
+
+    res.json({ ...toApiTeam(team), players: players.map(toApiPlayer) });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -323,25 +266,14 @@ export const getNextPlayerForAuction = async (req: Request, res: Response): Prom
     // Step 2: If no fresh players, start second round with previously unsold players
     if (!player) {
       // Check if there are any unsold players
-      const unsoldCount = await prisma.player.count({
-        where: {
-          isSold: false,
-          isUnsold: true
-        }
-      });
+      const unsoldCount = await Player.countDocuments({ isSold: false, isUnsold: true });
 
       if (unsoldCount > 0) {
         // Reset ALL unsold players for second round of bidding
-        await prisma.player.updateMany({
-          where: {
-            isSold: false,
-            isUnsold: true
-          },
-          data: {
-            isUnsold: false,
-            basePrice: 2000  // Reset to base price for second round
-          }
-        });
+        await Player.updateMany(
+          { isSold: false, isUnsold: true },
+          { $set: { isUnsold: false, basePrice: 2000 } } // Reset to base price for second round
+        );
 
         player = await getNextPlayerBySettings();
       }
@@ -352,7 +284,7 @@ export const getNextPlayerForAuction = async (req: Request, res: Response): Prom
       return;
     }
 
-    res.json(player);
+    res.json(toApiPlayer(player));
   } catch (error: any) {
     console.error(error);
     res.status(500).json({ error: error.message });
@@ -363,7 +295,7 @@ export const markPlayerUnsold = async (req: Request, res: Response): Promise<voi
   if (!ensureAdmin(req, res)) return;
   try {
     const playerId = parseInt(req.params.id, 10);
-    const player = await prisma.player.findUnique({ where: { id: playerId } });
+    const player = await Player.findById(playerId).lean();
 
     if (!player) {
       res.status(404).json({ error: 'Player not found' });
@@ -374,34 +306,35 @@ export const markPlayerUnsold = async (req: Request, res: Response): Promise<voi
     let refundedTeamId: number | null = null;
     let refundedAmount = 0;
     if (player.teamId && player.soldPrice) {
-      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      const team = await Team.findByIdAndUpdate(
+        player.teamId,
+        { $inc: { currentPurse: player.soldPrice } },
+        { new: true }
+      ).lean();
       if (team) {
-        await prisma.team.update({
-          where: { id: team.id },
-          data: {
-            currentPurse: team.currentPurse + player.soldPrice,
-          },
-        });
-        refundedTeamId = team.id;
+        refundedTeamId = team._id;
         refundedAmount = player.soldPrice;
       }
     }
 
     // Mark as unsold
-    const updatedPlayer = await prisma.player.update({
-      where: { id: playerId },
-      data: {
-        isSold: false,
-        isUnsold: true,
-        soldPrice: null,
-        teamId: null,
-        // Don't reset basePrice here - keep it for sorting
+    const updatedPlayer = await Player.findByIdAndUpdate(
+      playerId,
+      {
+        $set: {
+          isSold: false,
+          isUnsold: true,
+          soldPrice: null,
+          teamId: null,
+          // Don't reset basePrice here - keep it for sorting
+        },
       },
-    });
+      { new: true }
+    ).lean();
 
     res.json({
       message: 'Player marked unsold and purse updated',
-      player: updatedPlayer,
+      player: toApiPlayer(updatedPlayer),
       refundedTeamId,
       refundedAmount,
     });
@@ -413,72 +346,60 @@ export const markPlayerUnsold = async (req: Request, res: Response): Promise<voi
 export const markAllPlayersUnsold = async (req: Request, res: Response): Promise<void> => {
   if (!ensureAdmin(req, res)) return;
 
+  const session = await mongoose.startSession();
   try {
-    const refundedTeamsRows = await prisma.$queryRaw<Array<{ count: number }>>`
-      SELECT COUNT(DISTINCT "teamId")::int AS count
-      FROM "Player"
-      WHERE "isSold" = true
-        AND "soldPrice" IS NOT NULL
-        AND "teamId" IS NOT NULL
-    `;
-    const refundedTeams = Number(refundedTeamsRows[0]?.count || 0);
+    let affectedPlayers = 0;
+    let refundedTeams = 0;
 
-    const [, playerUpdateResult] = await prisma.$transaction([
-      prisma.$executeRaw`
-        UPDATE "Team" AS t
-        SET "currentPurse" = t."currentPurse" + refund.total_refund
-        FROM (
-          SELECT "teamId" AS team_id, SUM("soldPrice")::int AS total_refund
-          FROM "Player"
-          WHERE "isSold" = true
-            AND "soldPrice" IS NOT NULL
-            AND "teamId" IS NOT NULL
-          GROUP BY "teamId"
-        ) AS refund
-        WHERE t."id" = refund.team_id
-      `,
-      prisma.player.updateMany({
-        data: {
-          isSold: false,
-          isUnsold: true,
-          soldPrice: null,
-          teamId: null,
-        },
-      }),
-    ]);
+    await session.withTransaction(async () => {
+      const refunds = await Player.aggregate([
+        { $match: { isSold: true, soldPrice: { $ne: null }, teamId: { $ne: null } } },
+        { $group: { _id: '$teamId', totalRefund: { $sum: '$soldPrice' } } },
+      ]).session(session);
 
-    const result = {
-      affectedPlayers: playerUpdateResult.count,
-      refundedTeams,
-    };
+      refundedTeams = refunds.length;
+
+      if (refunds.length > 0) {
+        await Team.bulkWrite(
+          refunds.map((r: any) => ({
+            updateOne: {
+              filter: { _id: r._id },
+              update: { $inc: { currentPurse: r.totalRefund } },
+            },
+          })),
+          { session }
+        );
+      }
+
+      const updateResult = await Player.updateMany(
+        {},
+        { $set: { isSold: false, isUnsold: true, soldPrice: null, teamId: null } },
+        { session }
+      );
+      affectedPlayers = updateResult.modifiedCount;
+    });
 
     res.json({
       message: 'All players marked as unsold',
-      ...result,
+      affectedPlayers,
+      refundedTeams,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  } finally {
+    await session.endSession();
   }
 };
-
-
 
 export const getAuctionSummary = async (req: Request, res: Response): Promise<void> => {
   try {
     const auctionSettings = await getAuctionSettings();
-    const teams = await prisma.team.findMany({
-      select: {
-        id: true,
-        name: true,
-        currentPurse: true,
-        players: { select: { id: true } },
-      },
-    });
+    const teams = await getTeamsWithPlayerCount();
 
-    const summary = teams.map(team => ({
-      teamId: team.id,
+    const summary = teams.map((team: any) => ({
+      teamId: team._id,
       name: team.name,
-      totalPlayers: team.players.length,
+      totalPlayers: team.totalPlayers,
       remainingPurse: team.currentPurse,
       minPlayersPerTeam: auctionSettings.minPlayersPerTeam,
       maxPlayersPerTeam: auctionSettings.maxPlayersPerTeam,
@@ -490,59 +411,17 @@ export const getAuctionSummary = async (req: Request, res: Response): Promise<vo
   }
 };
 
-// export const markPlayerUnsold = async (req: Request, res: Response): Promise<void> => {
-//   try {
-//     const playerId = parseInt(req.params.id, 10);
-//     const player = await prisma.player.findUnique({ where: { id: playerId } });
-
-//     if (!player) {
-//       res.status(404).json({ error: 'Player not found' });
-//       return;
-//     }
-
-   
-
-//     await prisma.player.update({
-//       where: { id: playerId },
-//       data: {
-//         isSold: false,
-//         basePrice: 2000,  // Reset to 2000 as your rule
-//         soldPrice: null,
-//       },
-//     });
-
-//     if (player.teamId) {
-//       const team = await prisma.team.findUnique({ where: { id: player.teamId } });
-//       if (team) {
-//         await prisma.team.update({
-//           where: { id: team.id },
-//           data: {
-//             currentPurse: team.currentPurse + (player.soldPrice ?? 0),
-//           },
-//         });
-//       }
-//     }
-
-//     res.json({ message: 'Player marked unsold and purse updated' });
-//   } catch (error: any) {
-//     res.status(500).json({ error: error.message });
-//   }
-// };
-
+const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export const searchPlayersForAuction = async (req: Request, res: Response): Promise<void> => {
   try {
     const searchTerm = (req.query.q as string) || '';
-    const players = await prisma.player.findMany({
-      where: {
-        name: {
-          contains: searchTerm,
-          mode: 'insensitive',
-        },
-      },
-      orderBy: { basePrice: 'desc' },
-    });
-    res.json(players);
+    const players = await Player.find({
+      name: { $regex: escapeRegex(searchTerm), $options: 'i' },
+    })
+      .sort({ basePrice: -1 })
+      .lean();
+    res.json(players.map(toApiPlayer));
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -572,22 +451,20 @@ export const sellPlayer = async (req: Request, res: Response): Promise<void> => 
     }
 
     const auctionSettings = await getAuctionSettings();
-    const player = await prisma.player.findUnique({ where: { id: playerId } });
+    const player = await Player.findById(playerId).lean();
     if (!player) {
       res.status(404).json({ error: 'Player not found' });
       return;
     }
 
-    const targetTeam = await prisma.team.findUnique({ where: { id: teamId } });
+    const targetTeam = await Team.findById(teamId).lean();
     if (!targetTeam) {
       res.status(404).json({ error: 'Team not found' });
       return;
     }
 
     if (player.teamId !== teamId) {
-      const targetTeamPlayersCount = await prisma.player.count({
-        where: { teamId, isSold: true },
-      });
+      const targetTeamPlayersCount = await Player.countDocuments({ teamId, isSold: true });
       if (targetTeamPlayersCount >= auctionSettings.maxPlayersPerTeam) {
         res
           .status(400)
@@ -608,7 +485,7 @@ export const sellPlayer = async (req: Request, res: Response): Promise<void> => 
         }
         targetTeamPurse -= priceDelta;
       } else {
-        const oldTeam = await prisma.team.findUnique({ where: { id: player.teamId } });
+        const oldTeam = await Team.findById(player.teamId).lean();
         if (!oldTeam) {
           res.status(404).json({ error: 'Previous team not found' });
           return;
@@ -619,7 +496,7 @@ export const sellPlayer = async (req: Request, res: Response): Promise<void> => 
         }
         targetTeamPurse -= soldPrice;
         previousTeamRefundUpdate = {
-          teamId: oldTeam.id,
+          teamId: oldTeam._id,
           updatedPurse: oldTeam.currentPurse + player.soldPrice,
         };
       }
@@ -631,28 +508,22 @@ export const sellPlayer = async (req: Request, res: Response): Promise<void> => 
       targetTeamPurse -= soldPrice;
     }
 
-    await runTransactionWithRetry(async (tx) => {
+    await runTransactionWithRetry(async (session) => {
       if (previousTeamRefundUpdate) {
-        await tx.team.update({
-          where: { id: previousTeamRefundUpdate.teamId },
-          data: { currentPurse: previousTeamRefundUpdate.updatedPurse },
-        });
+        await Team.findByIdAndUpdate(
+          previousTeamRefundUpdate.teamId,
+          { $set: { currentPurse: previousTeamRefundUpdate.updatedPurse } },
+          { session }
+        );
       }
 
-      await tx.team.update({
-        where: { id: teamId },
-        data: { currentPurse: targetTeamPurse },
-      });
+      await Team.findByIdAndUpdate(teamId, { $set: { currentPurse: targetTeamPurse } }, { session });
 
-      await tx.player.update({
-        where: { id: playerId },
-        data: {
-          isSold: true,
-          isUnsold: false,
-          soldPrice,
-          teamId,
-        },
-      });
+      await Player.findByIdAndUpdate(
+        playerId,
+        { $set: { isSold: true, isUnsold: false, soldPrice, teamId } },
+        { session }
+      );
     });
 
     const result = {
@@ -695,7 +566,7 @@ export const exchangePlayersHandler = async (req: Request, res: Response): Promi
       return;
     }
 
-    const incomingPlayer = await prisma.player.findUnique({ where: { id: incomingPlayerId } });
+    const incomingPlayer = await Player.findById(incomingPlayerId).lean();
     if (!incomingPlayer || !incomingPlayer.isSold || !incomingPlayer.teamId) {
       res.status(400).json({ error: 'Incoming player must be a sold player assigned to a team' });
       return;
@@ -707,8 +578,8 @@ export const exchangePlayersHandler = async (req: Request, res: Response): Promi
     }
 
     const [requestedTeam, currentOwnerTeam] = await Promise.all([
-      prisma.team.findUnique({ where: { id: requestedTeamId } }),
-      prisma.team.findUnique({ where: { id: incomingPlayer.teamId } }),
+      Team.findById(requestedTeamId).lean(),
+      Team.findById(incomingPlayer.teamId).lean(),
     ]);
 
     if (!requestedTeam || !currentOwnerTeam) {
@@ -717,13 +588,13 @@ export const exchangePlayersHandler = async (req: Request, res: Response): Promi
     }
 
     const normalizedOutgoingId = outgoingPlayerId ?? null;
-    let outgoingPlayer: Awaited<ReturnType<typeof prisma.player.findUnique>> | null = null;
+    let outgoingPlayer: (typeof incomingPlayer) | null = null;
     if (normalizedOutgoingId) {
       if (normalizedOutgoingId === incomingPlayerId) {
         res.status(400).json({ error: 'incoming and outgoing players cannot be the same' });
         return;
       }
-      outgoingPlayer = await prisma.player.findUnique({ where: { id: normalizedOutgoingId } });
+      outgoingPlayer = await Player.findById(normalizedOutgoingId).lean();
       if (!outgoingPlayer || !outgoingPlayer.isSold || outgoingPlayer.teamId !== requestedTeamId) {
         res.status(400).json({ error: 'Outgoing player must be a sold player from requested team' });
         return;
@@ -731,9 +602,7 @@ export const exchangePlayersHandler = async (req: Request, res: Response): Promi
     }
 
     if (!normalizedOutgoingId) {
-      const requestedTeamPlayersCount = await prisma.player.count({
-        where: { teamId: requestedTeamId, isSold: true },
-      });
+      const requestedTeamPlayersCount = await Player.countDocuments({ teamId: requestedTeamId, isSold: true });
       if (requestedTeamPlayersCount >= settings.maxPlayersPerTeam) {
         res.status(400).json({ error: `Requested team already has maximum allowed players (${settings.maxPlayersPerTeam})` });
         return;
@@ -745,28 +614,32 @@ export const exchangePlayersHandler = async (req: Request, res: Response): Promi
       return;
     }
 
-    await runTransactionWithRetry(async (tx) => {
+    await runTransactionWithRetry(async (session) => {
       if (cashToOtherTeam > 0) {
-        await tx.team.update({
-          where: { id: requestedTeamId },
-          data: { currentPurse: requestedTeam.currentPurse - cashToOtherTeam },
-        });
-        await tx.team.update({
-          where: { id: currentOwnerTeam.id },
-          data: { currentPurse: currentOwnerTeam.currentPurse + cashToOtherTeam },
-        });
+        await Team.findByIdAndUpdate(
+          requestedTeamId,
+          { $inc: { currentPurse: -cashToOtherTeam } },
+          { session }
+        );
+        await Team.findByIdAndUpdate(
+          currentOwnerTeam._id,
+          { $inc: { currentPurse: cashToOtherTeam } },
+          { session }
+        );
       }
 
-      await tx.player.update({
-        where: { id: incomingPlayerId },
-        data: { teamId: requestedTeamId, isSold: true, isUnsold: false },
-      });
+      await Player.findByIdAndUpdate(
+        incomingPlayerId,
+        { $set: { teamId: requestedTeamId, isSold: true, isUnsold: false } },
+        { session }
+      );
 
       if (outgoingPlayer) {
-        await tx.player.update({
-          where: { id: outgoingPlayer.id },
-          data: { teamId: currentOwnerTeam.id, isSold: true, isUnsold: false },
-        });
+        await Player.findByIdAndUpdate(
+          outgoingPlayer._id,
+          { $set: { teamId: currentOwnerTeam._id, isSold: true, isUnsold: false } },
+          { session }
+        );
       }
     });
 
@@ -811,7 +684,7 @@ export const addPlayerHandler = async (req: Request, res: Response): Promise<voi
 
     const createdPlayer = await addPlayer(name, role, basePrice, mobile, description, stats, playerImageUrl);
 
-    res.status(201).json({ message: 'Player added successfully', player: createdPlayer });
+    res.status(201).json({ message: 'Player added successfully', player: toApiPlayer(createdPlayer.toObject()) });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -845,7 +718,7 @@ export const updatePlayerHandler = async (req: Request, res: Response): Promise<
       playerImageUrl?: string;
     } = req.body;
 
-    const data: Prisma.PlayerUpdateInput = {};
+    const data: Record<string, unknown> = {};
 
     if (name !== undefined) data.name = name;
     if (role !== undefined) data.role = role;
@@ -858,12 +731,12 @@ export const updatePlayerHandler = async (req: Request, res: Response): Promise<
     if (stats !== undefined) data.stats = stats || null;
     if (playerImageUrl !== undefined) data.playerImageUrl = playerImageUrl || null;
 
-    if (Object.keys(data).length === 0) {
+    if (Object.keys(data).length === 0 && basePrice === undefined) {
       res.status(400).json({ error: 'No fields provided for update' });
       return;
     }
 
-    const player = await prisma.player.findUnique({ where: { id: playerId } });
+    const player = await Player.findById(playerId).lean();
     if (!player) {
       res.status(404).json({ error: 'Player not found' });
       return;
@@ -879,12 +752,9 @@ export const updatePlayerHandler = async (req: Request, res: Response): Promise<
       data.basePrice = basePrice;
     }
 
-    const updatedPlayer = await prisma.player.update({
-      where: { id: playerId },
-      data,
-    });
+    const updatedPlayer = await Player.findByIdAndUpdate(playerId, { $set: data }, { new: true }).lean();
 
-    res.json({ message: 'Player updated successfully', player: updatedPlayer });
+    res.json({ message: 'Player updated successfully', player: toApiPlayer(updatedPlayer) });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -893,6 +763,7 @@ export const updatePlayerHandler = async (req: Request, res: Response): Promise<
 export const deletePlayerHandler = async (req: Request, res: Response): Promise<void> => {
   if (!ensureAdmin(req, res)) return;
 
+  const session = await mongoose.startSession();
   try {
     const playerId = parseInt(req.params.id, 10);
     if (Number.isNaN(playerId)) {
@@ -900,7 +771,7 @@ export const deletePlayerHandler = async (req: Request, res: Response): Promise<
       return;
     }
 
-    const player = await prisma.player.findUnique({ where: { id: playerId } });
+    const player = await Player.findById(playerId).lean();
     if (!player) {
       res.status(404).json({ error: 'Player not found' });
       return;
@@ -908,22 +779,21 @@ export const deletePlayerHandler = async (req: Request, res: Response): Promise<
 
     let refundedTeamId: number | null = null;
     let refundedAmount = 0;
-    const ops: Prisma.PrismaPromise<unknown>[] = [];
-    if (player.teamId && player.soldPrice) {
-      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
-      if (team) {
-        refundedTeamId = team.id;
-        refundedAmount = player.soldPrice;
-        ops.push(
-          prisma.team.update({
-            where: { id: team.id },
-            data: { currentPurse: team.currentPurse + player.soldPrice },
-          })
+
+    await session.withTransaction(async () => {
+      if (player.teamId && player.soldPrice) {
+        const team = await Team.findByIdAndUpdate(
+          player.teamId,
+          { $inc: { currentPurse: player.soldPrice } },
+          { session }
         );
+        if (team) {
+          refundedTeamId = team._id;
+          refundedAmount = player.soldPrice as number;
+        }
       }
-    }
-    ops.push(prisma.player.delete({ where: { id: playerId } }));
-    await prisma.$transaction(ops);
+      await Player.findByIdAndDelete(playerId, { session });
+    });
 
     res.json({
       message: 'Player deleted successfully',
@@ -937,6 +807,8 @@ export const deletePlayerHandler = async (req: Request, res: Response): Promise<
       return;
     }
     res.status(500).json({ error: error.message });
+  } finally {
+    await session.endSession();
   }
 };
 
@@ -949,45 +821,42 @@ export const addPlayer = async (
   stats: string,
   playerImageUrl: string
 ) => {
-  return prisma.player.create({
-    data: {
-      name,
-      role,
-      basePrice,
-      mobile,
-      description,
-      stats,
-      playerImageUrl,
-      isSold: false,
-    },
+  const id = await getNextSequence('Player');
+  return Player.create({
+    _id: id,
+    name,
+    role,
+    basePrice,
+    mobile: mobile || null,
+    description: description || null,
+    stats: stats || null,
+    playerImageUrl: playerImageUrl || null,
+    isSold: false,
   });
 };
 
-
 export const createTeam = async (req: Request, res: Response): Promise<void> => {
-    if (!ensureAdmin(req, res)) return;
-    const {name , captainName, captainImage} = req.body;
-    if(!name || !captainName ){
-      res.status(400).json({error: 'Name and captainName are required'})
-      return
-    }
-    try {
-        const auctionSettings = await getAuctionSettings();
-        const team = await prisma.team.create({
-          data: {
-            name,
-            captainName,
-            captainImage,
-            currentPurse: auctionSettings.initialPurse,
-          }
-        });
-        res.status(201).json({message: 'Team created successfully', team });
-
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-
-  };
+  if (!ensureAdmin(req, res)) return;
+  const { name, captainName, captainImage } = req.body;
+  if (!name || !captainName) {
+    res.status(400).json({ error: 'Name and captainName are required' });
+    return;
+  }
+  try {
+    const auctionSettings = await getAuctionSettings();
+    const id = await getNextSequence('Team');
+    const team = await Team.create({
+      _id: id,
+      name,
+      captainName,
+      captainImage,
+      currentPurse: auctionSettings.initialPurse,
+    });
+    res.status(201).json({ message: 'Team created successfully', team: toApiTeam(team.toObject()) });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
 export const updateTeamHandler = async (req: Request, res: Response): Promise<void> => {
   if (!ensureAdmin(req, res)) return;
@@ -1011,7 +880,7 @@ export const updateTeamHandler = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const data: Prisma.TeamUpdateInput = {};
+    const data: Record<string, unknown> = {};
     if (name !== undefined) data.name = name.trim();
     if (captainName !== undefined) data.captainName = captainName.trim();
     if (captainImage !== undefined) data.captainImage = captainImage || null;
@@ -1021,18 +890,15 @@ export const updateTeamHandler = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const team = await prisma.team.findUnique({ where: { id: teamId } });
+    const team = await Team.findById(teamId).lean();
     if (!team) {
       res.status(404).json({ error: 'Team not found' });
       return;
     }
 
-    const updatedTeam = await prisma.team.update({
-      where: { id: teamId },
-      data,
-    });
+    const updatedTeam = await Team.findByIdAndUpdate(teamId, { $set: data }, { new: true }).lean();
 
-    res.json({ message: 'Team updated successfully', team: updatedTeam });
+    res.json({ message: 'Team updated successfully', team: toApiTeam(updatedTeam) });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -1048,30 +914,21 @@ export const deleteTeamHandler = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const team = await prisma.team.findUnique({
-      where: { id: teamId },
-      select: {
-        id: true,
-        name: true,
-        _count: {
-          select: {
-            players: true,
-          },
-        },
-      },
-    });
+    const team = await Team.findById(teamId).select('_id name').lean();
 
     if (!team) {
       res.status(404).json({ error: 'Team not found' });
       return;
     }
 
-    if (team._count.players > 0) {
+    const playerCount = await Player.countDocuments({ teamId });
+
+    if (playerCount > 0) {
       res.status(400).json({ error: 'Cannot delete a team that already has players' });
       return;
     }
 
-    await prisma.team.delete({ where: { id: teamId } });
+    await Team.findByIdAndDelete(teamId);
     res.json({ message: 'Team deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -1082,7 +939,7 @@ export const getAuctionSettingsHandler = async (req: Request, res: Response): Pr
   try {
     const settings = await getAuctionSettings();
     const normalizedSettings = {
-      id: settings.id,
+      id: settings._id,
       seasonName: settings.seasonName,
       initialPurse: settings.initialPurse,
       minPlayersPerTeam: settings.minPlayersPerTeam,
@@ -1105,6 +962,7 @@ export const getAuctionSettingsHandler = async (req: Request, res: Response): Pr
 
 export const updateAuctionSettingsHandler = async (req: Request, res: Response): Promise<void> => {
   if (!ensureAdmin(req, res)) return;
+  const session = await mongoose.startSession();
   try {
     const {
       seasonName,
@@ -1166,51 +1024,46 @@ export const updateAuctionSettingsHandler = async (req: Request, res: Response):
       return;
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const settings = await tx.auctionSettings.upsert({
-        where: { id: 1 },
-        update: {
-          seasonName: seasonName.trim(),
-          initialPurse,
-          minPlayersPerTeam,
-          maxPlayersPerTeam,
-          playerOrderByBasePrice,
-          playerOrderByRole,
-          allowedBasePrices: normalizedBasePrices,
-          isExchangeAllowed,
-        },
-        create: {
-          id: 1,
-          seasonName: seasonName.trim(),
-          initialPurse,
-          minPlayersPerTeam,
-          maxPlayersPerTeam,
-          playerOrderByBasePrice,
-          playerOrderByRole,
-          allowedBasePrices: normalizedBasePrices,
-          isExchangeAllowed,
-        },
-      });
+    let settings: any;
+    let updatedTeams = 0;
 
-      let updatedTeams = 0;
-      if (applyToExistingTeams) {
-        const updateResult = await tx.team.updateMany({
-          data: {
-            currentPurse: initialPurse,
+    await session.withTransaction(async () => {
+      settings = await AuctionSettings.findOneAndUpdate(
+        { _id: 1 },
+        {
+          $set: {
+            seasonName: seasonName.trim(),
+            initialPurse,
+            minPlayersPerTeam,
+            maxPlayersPerTeam,
+            playerOrderByBasePrice,
+            playerOrderByRole,
+            allowedBasePrices: normalizedBasePrices,
+            isExchangeAllowed,
           },
-        });
-        updatedTeams = updateResult.count;
-      }
+        },
+        { upsert: true, new: true, session }
+      ).lean();
 
-      return { settings, updatedTeams };
+      if (applyToExistingTeams) {
+        const updateResult = await Team.updateMany(
+          {},
+          { $set: { currentPurse: initialPurse } },
+          { session }
+        );
+        updatedTeams = updateResult.modifiedCount;
+      }
     });
 
     res.json({
       message: 'Auction settings updated successfully',
-      ...result,
+      settings: toApiSettings(settings),
+      updatedTeams,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  } finally {
+    await session.endSession();
   }
 };
 
@@ -1232,14 +1085,19 @@ export const reorderPlayersHandler = async (req: Request, res: Response): Promis
       }
     }
 
-    await prisma.$transaction(
-      orders.map(({ id, auctionOrder }) =>
-        prisma.player.update({
-          where: { id },
-          data: { auctionOrder },
-        })
-      )
-    );
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        await Player.bulkWrite(
+          orders.map(({ id, auctionOrder }) => ({
+            updateOne: { filter: { _id: id }, update: { $set: { auctionOrder } } },
+          })),
+          { session }
+        );
+      });
+    } finally {
+      await session.endSession();
+    }
 
     res.json({ message: 'Auction order saved successfully' });
   } catch (error: any) {
