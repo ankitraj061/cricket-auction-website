@@ -1,14 +1,12 @@
 import { Request, Response } from 'express';
-import { PrismaClient, UserRole, User } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import { redisClient } from '../config/redis.js';
+import { User, UserRole } from '../models/index.js';
+import { getNextSequence } from '../models/Counter.js';
 
 dotenv.config();
-
-const prisma = new PrismaClient();
-
 
 interface JwtPayload {
   id: number;
@@ -20,7 +18,7 @@ export const adminLogin = async (req: Request, res: Response): Promise<void> => 
   try {
     const { email, password } = req.body;
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await User.findOne({ email }).lean();
 
     if (!user) {
   res.status(401).json({ error: "Invalid credentials" });
@@ -37,7 +35,7 @@ if (!isMatch || user.role !== UserRole.ADMIN) {
 
     // Create JWT
     const token = jwt.sign(
-      { id: user.id, role: user.role },
+      { id: user._id, role: user.role },
       process.env.JWT_SECRET!,
       { expiresIn: "7d" }
     );
@@ -53,7 +51,7 @@ if (!isMatch || user.role !== UserRole.ADMIN) {
     res.json({
       message: "Login successful",
       user: {
-        id: user.id,
+        id: user._id,
         email: user.email,
         role: user.role
       }
@@ -69,7 +67,7 @@ export const userLogin = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await User.findOne({ email }).lean();
      if (!user) {
   res.status(401).json({ error: "Invalid credentials" });
   return;
@@ -84,7 +82,7 @@ if (!isMatch || user.role !== UserRole.ADMIN) {
 
 
     const token = jwt.sign(
-      { id: user.id, role: user.role },
+      { id: user._id, role: user.role },
       process.env.JWT_SECRET!,
       { expiresIn: "7d" }
     );
@@ -99,7 +97,7 @@ if (!isMatch || user.role !== UserRole.ADMIN) {
     res.json({
       message: "Login successful",
       user: {
-        id: user.id,
+        id: user._id,
         email: user.email,
         role: user.role
       }
@@ -115,7 +113,7 @@ export const adminRegister = async (req: Request, res: Response): Promise<void> 
   try {
     const { email, password } = req.body;
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await User.findOne({ email }).lean();
     if (existingUser) {
       res.status(400).json({ error: "User already exists" });
       return;
@@ -123,18 +121,18 @@ export const adminRegister = async (req: Request, res: Response): Promise<void> 
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        role: UserRole.ADMIN
-      }
+    const id = await getNextSequence('User');
+    const newUser = await User.create({
+      _id: id,
+      email,
+      password: hashedPassword,
+      role: UserRole.ADMIN
     });
 
     res.status(201).json({
       message: "Admin registered successfully",
       user: {
-        id: newUser.id,
+        id: newUser._id,
         email: newUser.email,
         role: newUser.role
       }
@@ -148,7 +146,7 @@ export const userRegister = async (req: Request, res: Response): Promise<void> =
   try {
     const { email, password } = req.body;
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await User.findOne({ email }).lean();
     if (existingUser) {
       res.status(400).json({ error: "User already exists" });
       return;
@@ -156,18 +154,18 @@ export const userRegister = async (req: Request, res: Response): Promise<void> =
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        role: UserRole.USER
-      }
+    const id = await getNextSequence('User');
+    const newUser = await User.create({
+      _id: id,
+      email,
+      password: hashedPassword,
+      role: UserRole.USER
     });
 
     res.status(201).json({
       message: "User registered successfully",
       user: {
-        id: newUser.id,
+        id: newUser._id,
         email: newUser.email,
         role: newUser.role
       }
@@ -238,10 +236,7 @@ export const checkAuth = async (req: Request, res: Response) => {
     ) as JwtPayload;
 
     // Fetch user
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
-      select: { id: true, email: true, role: true }
-    });
+    const user = await User.findById(decoded.id).select('_id email role').lean();
 
     if (!user) {
       return res.status(401).json({ error: "User not found" });
@@ -250,7 +245,7 @@ export const checkAuth = async (req: Request, res: Response) => {
     // Return session info
     res.status(200).json({
       authenticated: true,
-      user
+      user: { id: user._id, email: user.email, role: user.role }
     });
 
   } catch (err) {

@@ -1,13 +1,12 @@
 import { redisClient } from "../config/redis.js";
 import { Request, Response, NextFunction } from "express";
-import { Prisma,User, UserRole } from "@prisma/client";
 import jwt from "jsonwebtoken";
-import { prisma } from "../db/prisma.js";
+import { User, IUser, UserRole } from "../models/index.js";
 
 declare global {
   namespace Express {
     interface Request {
-      user?: User;
+      user?: IUser;
     }
   }
 }
@@ -39,7 +38,7 @@ if (isBlacklisted) {
 
 const user = cached
   ? JSON.parse(cached)
-  : await prisma.user.findUnique({ where: { id: decoded.id } });
+  : await User.findById(decoded.id).lean();
 
 
     if (!user) {

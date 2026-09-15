@@ -4,11 +4,8 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-COPY prisma ./prisma/
 
 RUN npm ci
-
-RUN npx prisma generate
 
 COPY tsconfig.json ./
 COPY src ./src/
@@ -23,13 +20,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package*.json ./
-COPY prisma ./prisma/
 
-RUN npm ci --omit=dev && npx prisma generate
+RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist/
 
 EXPOSE 8080
 
-# Run DB migrations then start the server
 CMD ["node", "dist/index.js"]

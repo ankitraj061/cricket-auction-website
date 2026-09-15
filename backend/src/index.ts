@@ -3,6 +3,7 @@ import "dotenv/config";
 import cors from 'cors'
 import cookieParser from "cookie-parser";
 import { connectRedis } from "./config/redis.js";
+import { connectMongo } from "./db/mongoose.js";
 import auctionRouter from "./routes/auction.route.js";
 import { rateLimit } from "./middleware/rateLimitMiddleware.js";
 import authRouter from "./routes/auth.route.js";
@@ -41,6 +42,7 @@ app.use('/api/auth', authRouter);
 
 (async () => {
   await connectRedis();
+  await connectMongo();
 
   app.listen(PORT,"0.0.0.0", () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
