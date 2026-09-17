@@ -96,6 +96,7 @@ const Players = () => {
   const [reorderDialogOpen, setReorderDialogOpen] = useState(false);
   const [reorderList, setReorderList] = useState<Player[]>([]);
   const [reorderSubmitting, setReorderSubmitting] = useState(false);
+  const [reorderResetting, setReorderResetting] = useState(false);
 
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const isAdmin = isAuthenticated && user?.role === 'ADMIN';
@@ -522,6 +523,20 @@ const Players = () => {
       toast.error(getErrorMessage(error, 'Failed to save order'));
     } finally {
       setReorderSubmitting(false);
+    }
+  };
+
+  const handleResetOrder = async () => {
+    setReorderResetting(true);
+    try {
+      await axiosClient.put('/api/auction/players/reorder/clear');
+      toast.success('Auction order reset to settings');
+      setReorderDialogOpen(false);
+      await fetchData();
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to reset order'));
+    } finally {
+      setReorderResetting(false);
     }
   };
 
@@ -1255,6 +1270,7 @@ const Players = () => {
             <DialogTitle className={uiTokens.dialogTitle}>Set Auction Order</DialogTitle>
             <DialogDescription className={uiTokens.dialogDescription}>
               Drag players to set the order they appear in the auction. Players at the top go first.
+              Resetting clears the manual order and hands sequencing back to the auction settings.
             </DialogDescription>
           </DialogHeader>
 
@@ -1284,10 +1300,17 @@ const Players = () => {
           </div>
 
           <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleResetOrder}
+              disabled={reorderSubmitting || reorderResetting}
+            >
+              {reorderResetting ? 'Resetting...' : 'Reset to settings order'}
+            </Button>
             <Button variant="outline" onClick={() => setReorderDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveOrder} disabled={reorderSubmitting}>
+            <Button onClick={handleSaveOrder} disabled={reorderSubmitting || reorderResetting}>
               {reorderSubmitting ? 'Saving...' : 'Save Order'}
             </Button>
           </DialogFooter>
