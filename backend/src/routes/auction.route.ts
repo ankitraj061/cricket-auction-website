@@ -14,6 +14,7 @@ import {
   updatePlayerHandler,
   deletePlayerHandler,
   reorderPlayersHandler,
+  clearPlayerOrderHandler,
   createTeam,
   updateTeamHandler,
   deleteTeamHandler,
@@ -31,6 +32,7 @@ router.put('/players/sell',authMiddleware, sellPlayer);
 router.post('/players/exchange', authMiddleware, exchangePlayersHandler);
 router.put('/players/unsold-all',authMiddleware, markAllPlayersUnsold);
 router.put('/players/reorder', authMiddleware, reorderPlayersHandler);
+router.put('/players/reorder/clear', authMiddleware, clearPlayerOrderHandler);
 router.put('/players/:id/unsold',authMiddleware, markPlayerUnsold);
 router.put('/players/:id', authMiddleware, updatePlayerHandler);
 router.delete('/players/:id', authMiddleware, deletePlayerHandler);

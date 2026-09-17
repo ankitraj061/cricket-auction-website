@@ -39,8 +39,6 @@ type BasePriceOrder = (typeof BASE_PRICE_ORDERS)[number];
 const ROLE_ORDERS = ['NO_ORDER', 'BATSMAN_FIRST', 'BOWLER_FIRST', 'ALLROUNDER_FIRST'] as const;
 type RoleOrder = (typeof ROLE_ORDERS)[number];
 
-const ROLE_SORT_RANK: Record<Role, number> = { BATSMAN: 0, BOWLER: 1, ALLROUNDER: 2 };
-
 const getRolePriorityWeight = (role: Role, roleOrder: RoleOrder): number => {
   if (roleOrder === 'NO_ORDER') return 0;
 
@@ -90,14 +88,20 @@ const sortPlayersForAuction = (
   });
 };
 
-const getNextPlayerBySettings = async () => {
+const resolveOrderSettings = async () => {
   const settings = await getAuctionSettings();
-  const basePriceOrder = BASE_PRICE_ORDERS.includes(settings.playerOrderByBasePrice as BasePriceOrder)
-    ? (settings.playerOrderByBasePrice as BasePriceOrder)
-    : 'DESC';
-  const roleOrder = ROLE_ORDERS.includes(settings.playerOrderByRole as RoleOrder)
-    ? (settings.playerOrderByRole as RoleOrder)
-    : 'NO_ORDER';
+  return {
+    basePriceOrder: BASE_PRICE_ORDERS.includes(settings.playerOrderByBasePrice as BasePriceOrder)
+      ? (settings.playerOrderByBasePrice as BasePriceOrder)
+      : ('DESC' as BasePriceOrder),
+    roleOrder: ROLE_ORDERS.includes(settings.playerOrderByRole as RoleOrder)
+      ? (settings.playerOrderByRole as RoleOrder)
+      : ('NO_ORDER' as RoleOrder),
+  };
+};
+
+const getNextPlayerBySettings = async () => {
+  const { basePriceOrder, roleOrder } = await resolveOrderSettings();
 
   const candidates = await Player.find({ isSold: false, isUnsold: false }).lean();
 
@@ -191,17 +195,17 @@ const getTeamsWithPlayerCount = async () => {
 
 export const getAllPlayers = async (req: Request, res: Response): Promise<void> => {
   try {
-    const [players, teams] = await Promise.all([
+    const [players, teams, { basePriceOrder, roleOrder }] = await Promise.all([
       Player.find({}).populate({ path: 'teamId', select: '_id name' }).lean(),
       getTeamsWithPlayerCount(),
+      resolveOrderSettings(),
     ]);
 
-    const orderedPlayers = [...players].sort((a: any, b: any) => {
-      if (b.basePrice !== a.basePrice) return b.basePrice - a.basePrice;
-      const roleDelta = ROLE_SORT_RANK[a.role as Role] - ROLE_SORT_RANK[b.role as Role];
-      if (roleDelta !== 0) return roleDelta;
-      return a.name.localeCompare(b.name);
-    });
+    const orderedPlayers = sortPlayersForAuction(
+      players as unknown as IPlayer[],
+      basePriceOrder,
+      roleOrder
+    );
 
     const teamsResponse = teams.map((team: any) => ({
       id: team._id,
@@ -1119,6 +1123,20 @@ export const reorderPlayersHandler = async (req: Request, res: Response): Promis
     }
 
     res.json({ message: 'Auction order saved successfully' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const clearPlayerOrderHandler = async (req: Request, res: Response): Promise<void> => {
+  if (!ensureAdmin(req, res)) return;
+
+  try {
+    const result = await Player.updateMany(
+      { auctionOrder: { $ne: null } },
+      { $set: { auctionOrder: null } }
+    );
+    res.json({ message: 'Auction order reset', cleared: result.modifiedCount });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
